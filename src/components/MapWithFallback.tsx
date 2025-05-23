@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Platform, Alert } from 'react-native';
 import Geolocation from 'react-native-geolocation-service';
+import { GOOGLE_MAPS_API_KEY } from '@env';
 
 // Define types
 export type Region = {
@@ -34,12 +35,17 @@ const MapWithFallback = ({
   const [MapView, setMapView] = useState<any>(null);
   const [Marker, setMarker] = useState<any>(null);
 
+  // Log API key (masked for security)
+  console.log('API Key available:', GOOGLE_MAPS_API_KEY ? 'Yes (length: ' + GOOGLE_MAPS_API_KEY.length + ')' : 'No');
+
   // Try to load the map component
   useEffect(() => {
     const loadMapComponents = async () => {
       try {
+        console.log('Loading map components...');
         // Dynamic import with error handling
         const ReactNativeMaps = await import('react-native-maps');
+        console.log('Map components loaded successfully');
         setMapView(() => ReactNativeMaps.default);
         setMarker(() => ReactNativeMaps.Marker);
         setMapReady(true);
@@ -115,6 +121,7 @@ const MapWithFallback = ({
   }
 
   // Map is loaded and ready, render the map
+  console.log('Rendering MapView with API key');
   return (
     <View style={[{ flex: 1 }, style]}>
       <MapView
@@ -129,6 +136,9 @@ const MapWithFallback = ({
         }}
         provider="google"
         liteMode={true} // Use lite mode to reduce memory usage
+        apiKey={GOOGLE_MAPS_API_KEY}
+        onMapReady={() => console.log('Map is ready!')}
+        onError={(error: any) => console.error('Map error:', error)}
       >
         {Marker && (
           <Marker
