@@ -6,88 +6,134 @@ import {
   ActivityIndicator,
   ViewStyle,
   TextStyle,
-  TouchableOpacityProps,
+  Platform,
 } from 'react-native';
 import { useTheme } from '../../context/ThemeContext';
 
-interface ButtonProps extends TouchableOpacityProps {
+export interface ButtonProps {
   title: string;
   onPress: () => void;
   variant?: 'primary' | 'secondary' | 'outline';
-  loading?: boolean;
+  size?: 'small' | 'medium' | 'large';
   disabled?: boolean;
-  buttonStyle?: ViewStyle;
+  loading?: boolean;
+  style?: ViewStyle;
   textStyle?: TextStyle;
+  icon?: React.ReactNode;
 }
 
 const Button: React.FC<ButtonProps> = ({
   title,
   onPress,
   variant = 'primary',
-  loading = false,
+  size = 'medium',
   disabled = false,
-  buttonStyle,
+  loading = false,
+  style,
   textStyle,
-  ...rest
+  icon,
 }) => {
   const { theme } = useTheme();
 
-  const getButtonStyles = () => {
+  const getBackgroundColor = () => {
+    if (disabled) return theme.secondary;
+    
     switch (variant) {
       case 'primary':
-        return {
-          backgroundColor: theme.primary,
-          borderColor: theme.primary,
-        };
+        return theme.primary;
       case 'secondary':
-        return {
-          backgroundColor: theme.secondary,
-          borderColor: theme.secondary,
-        };
+        return theme.secondary;
       case 'outline':
-        return {
-          backgroundColor: 'transparent',
-          borderColor: theme.primary,
-        };
+        return 'transparent';
       default:
-        return {
-          backgroundColor: theme.primary,
-          borderColor: theme.primary,
-        };
+        return theme.primary;
+    }
+  };
+
+  const getBorderColor = () => {
+    if (disabled) return theme.secondary;
+    
+    switch (variant) {
+      case 'outline':
+        return theme.primary;
+      default:
+        return 'transparent';
     }
   };
 
   const getTextColor = () => {
-    if (variant === 'outline') {
-      return theme.primary;
+    if (disabled) return theme.text;
+    
+    switch (variant) {
+      case 'primary':
+        return 'white';
+      case 'secondary':
+        return theme.text;
+      case 'outline':
+        return theme.primary;
+      default:
+        return 'white';
     }
-    return '#FFFFFF';
+  };
+
+  const getButtonHeight = () => {
+    switch (size) {
+      case 'small':
+        return 36;
+      case 'medium':
+        return 44;
+      case 'large':
+        return 52;
+      default:
+        return 44;
+    }
   };
 
   return (
     <TouchableOpacity
       style={[
         styles.button,
-        getButtonStyles(),
-        disabled && styles.disabled,
-        buttonStyle,
+        {
+          backgroundColor: getBackgroundColor(),
+          borderColor: getBorderColor(),
+          height: getButtonHeight(),
+        },
+        variant === 'outline' && styles.outlineButton,
+        disabled && styles.disabledButton,
+        style,
       ]}
-      onPress={onPress}
+      onPress={(event) => {
+        // Log button press to debug
+        console.log(`[Button] ${title} pressed`);
+        // Call onPress handler with event
+        onPress();
+      }}
       disabled={disabled || loading}
       activeOpacity={0.7}
-      {...rest}>
+    >
       {loading ? (
-        <ActivityIndicator color={getTextColor()} size="small" />
+        <ActivityIndicator
+          color={getTextColor()}
+          size="small"
+        />
       ) : (
-        <Text
-          style={[
-            styles.text,
-            { color: getTextColor() },
-            disabled && styles.disabledText,
-            textStyle,
-          ]}>
-          {title}
-        </Text>
+        <>
+          {icon && icon}
+          <Text
+            style={[
+              styles.text,
+              {
+                color: getTextColor(),
+                marginLeft: icon ? 8 : 0,
+              },
+              size === 'small' && styles.smallText,
+              size === 'large' && styles.largeText,
+              textStyle,
+            ]}
+          >
+            {title}
+          </Text>
+        </>
       )}
     </TouchableOpacity>
   );
@@ -95,24 +141,52 @@ const Button: React.FC<ButtonProps> = ({
 
 const styles = StyleSheet.create({
   button: {
-    padding: 15,
-    borderRadius: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
     flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 16,
+    borderRadius: 8,
     borderWidth: 1,
-    marginVertical: 8,
+    borderColor: 'transparent',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.1,
+        shadowRadius: 2,
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
   },
-  text: {
-    fontSize: 16,
-    fontWeight: '600',
-    textAlign: 'center',
+  outlineButton: {
+    borderWidth: 1,
+    ...Platform.select({
+      ios: {
+        shadowColor: 'transparent',
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 0,
+        shadowRadius: 0,
+      },
+      android: {
+        elevation: 0,
+      },
+    }),
   },
-  disabled: {
+  disabledButton: {
     opacity: 0.6,
   },
-  disabledText: {
-    opacity: 0.8,
+  text: {
+    fontSize: 14,
+    fontWeight: '500',
+    textAlign: 'center',
+  },
+  smallText: {
+    fontSize: 14,
+  },
+  largeText: {
+    fontSize: 14,
   },
 });
 

@@ -17,6 +17,7 @@ interface InputProps<T extends FieldValues> extends TextInputProps {
   name: FieldPath<T>;
   error?: string;
   containerStyle?: StyleProp<ViewStyle>;
+  valueAsNumber?: boolean;
 }
 
 function Input<T extends FieldValues>({
@@ -25,6 +26,7 @@ function Input<T extends FieldValues>({
   name,
   error,
   containerStyle,
+  valueAsNumber = false,
   ...rest
 }: InputProps<T>) {
   const { theme, isDarkMode } = useTheme();
@@ -45,8 +47,15 @@ function Input<T extends FieldValues>({
                 backgroundColor: theme.cardBackground
               },
             ]}
-            value={value as string}
-            onChangeText={onChange}
+            value={value?.toString() || ''}
+            onChangeText={(text) => {
+              if (valueAsNumber) {
+                // Convert to number for number fields
+                onChange(text === '' ? 0 : parseFloat(text));
+              } else {
+                onChange(text);
+              }
+            }}
             onBlur={onBlur}
             placeholderTextColor={isDarkMode ? '#888' : '#AAA'}
             {...rest}

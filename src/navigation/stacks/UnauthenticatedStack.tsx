@@ -1,43 +1,43 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { useAuth } from '../../store/authStore';
-
-// Screens
-import SignupScreen from '../../screens/SignupScreen/SignupScreen';
 import LoginScreen from '../../screens/LoginScreen/LoginScreen';
+import SignupScreen from '../../screens/SignupScreen/SignupScreen';
 import VerificationScreen from '../../screens/VerificationScreen/VerificationScreen';
+import ForgotPasswordScreen from '../../screens/ForgotPasswordScreen/ForgotPasswordScreen';
+import { useAuth } from '../../store/authStore';
 
 export type UnauthStackParamList = {
   Login: undefined;
   Signup: undefined;
   Verification: { email: string };
+  ForgotPassword: undefined;
 };
-
-interface UnauthStackProps {
-  initialRoute?: keyof UnauthStackParamList;
-}
 
 const Stack = createNativeStackNavigator<UnauthStackParamList>();
 
-const UnauthStack: React.FC<UnauthStackProps> = ({ initialRoute = 'Login' }) => {
-  // Get current email from auth context to pass to verification screen
+const UnauthenticatedStack: React.FC = () => {
   const { pendingVerification, currentEmail } = useAuth();
   
+  // Determine initial route based on auth state
+  const initialRoute = pendingVerification ? 'Verification' : 'Login';
+
   return (
     <Stack.Navigator
       initialRouteName={initialRoute}
       screenOptions={{
         headerShown: false,
-      }}>
+      }}
+    >
       <Stack.Screen name="Login" component={LoginScreen} />
       <Stack.Screen name="Signup" component={SignupScreen} />
       <Stack.Screen 
         name="Verification" 
-        component={VerificationScreen}
-        initialParams={{ email: currentEmail || 'eurisko@gmail.com' }} 
+        component={VerificationScreen} 
+        initialParams={pendingVerification ? { email: currentEmail } : undefined}
       />
+      <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
     </Stack.Navigator>
   );
 };
 
-export default UnauthStack; 
+export default UnauthenticatedStack; 

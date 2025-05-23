@@ -1,26 +1,51 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
-import { StatusBar } from 'react-native';
-import { useAuth } from '../context/AuthContext';
+import { View, ActivityIndicator, StyleSheet, Text } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
-
-// Stacks
+import { useAuth } from '../store/authStore';
 import AuthenticatedStack from './stacks/AuthenticatedStack';
-import UnauthStack from './stacks/UnauthStack';
+import UnauthenticatedStack from './stacks/UnauthenticatedStack';
 
 const Navigator: React.FC = () => {
-  const { isLoggedIn, pendingVerification } = useAuth();
-  const { isDarkMode, theme } = useTheme();
+  const { theme } = useTheme();
+  const { isLoggedIn, initialized, loading, error } = useAuth();
+
+  if (!initialized) {
+    return (
+      <View style={[styles.loadingContainer, { backgroundColor: theme.background }]}>
+        <ActivityIndicator size="large" color={theme.primary} />
+        <Text style={[styles.loadingText, { color: theme.text }]}>
+          Loading app...
+        </Text>
+      </View>
+    );
+  }
+
+  if (error) {
+    console.error('Auth error:', error);
+  }
 
   return (
     <NavigationContainer>
-      <StatusBar
-        barStyle={isDarkMode ? 'light-content' : 'dark-content'}
-        backgroundColor={theme.background}
-      />
-      {isLoggedIn ? <AuthenticatedStack /> : <UnauthStack initialRoute={pendingVerification ? 'Verification' : 'Login'} />}
+      {isLoggedIn ? (
+        <AuthenticatedStack />
+      ) : (
+        <UnauthenticatedStack />
+      )}
     </NavigationContainer>
   );
 };
+
+const styles = StyleSheet.create({
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+  }
+});
 
 export default Navigator; 
