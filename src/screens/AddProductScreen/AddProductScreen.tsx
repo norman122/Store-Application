@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,8 @@ import {
   TextInput as RNTextInput,
   Modal,
   Platform,
+  Animated,
+  Dimensions,
 } from 'react-native';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -84,6 +86,10 @@ const AddProductScreen: React.FC = () => {
 
   // Watch the location for display
   const location = watch('location');
+
+  // Add animated value for the modal animation
+  const slideAnimation = useRef(new Animated.Value(0)).current;
+  const modalOpacity = useRef(new Animated.Value(0)).current;
 
   const handleImagePicker = async () => {
     if (images.length >= 5) {
@@ -159,11 +165,52 @@ const AddProductScreen: React.FC = () => {
     setImages(newImages);
   };
 
-  // Open location modal with mock data
-  const handleSelectLocation = () => {
+  // Modified function to handle modal animation
+  const openLocationModal = () => {
     setMapVisible(true);
+    // Reset the animation value
+    slideAnimation.setValue(Dimensions.get('window').height);
+    modalOpacity.setValue(0);
+    
+    // Start the animation with longer duration (800ms instead of default ~300ms)
+    Animated.parallel([
+      Animated.timing(slideAnimation, {
+        toValue: 0,
+        duration: 800, // Longer animation duration
+        useNativeDriver: true,
+      }),
+      Animated.timing(modalOpacity, {
+        toValue: 1,
+        duration: 800, // Match the slide animation duration
+        useNativeDriver: true,
+      })
+    ]).start();
+  };
+  
+  const closeLocationModal = () => {
+    // Animate out
+    Animated.parallel([
+      Animated.timing(slideAnimation, {
+        toValue: Dimensions.get('window').height,
+        duration: 500,
+        useNativeDriver: true,
+      }),
+      Animated.timing(modalOpacity, {
+        toValue: 0,
+        duration: 500,
+        useNativeDriver: true,
+      })
+    ]).start(() => {
+      // After animation completes, hide the modal
+      setMapVisible(false);
+    });
   };
 
+  // Replace handleSelectLocation with openLocationModal
+  const handleSelectLocation = () => {
+    openLocationModal();
+  };
+  
   // Update coordinates from user input
   const handleLocationSelect = (latitude: number, longitude: number) => {
     setMapRegion({
@@ -172,8 +219,8 @@ const AddProductScreen: React.FC = () => {
       longitude,
     });
   };
-
-  // Save location to form
+  
+  // Modify saveLocation to close with animation
   const saveLocation = () => {
     if (!locationName.trim()) {
       Alert.alert('Location Name Required', 'Please enter a name for this location');
@@ -186,7 +233,7 @@ const AddProductScreen: React.FC = () => {
       longitude: mapRegion.longitude,
     });
     
-    setMapVisible(false);
+    closeLocationModal();
   };
 
   // Select a mock location
@@ -386,122 +433,141 @@ const AddProductScreen: React.FC = () => {
         </View>
       </ScrollView>
       
-      {/* Location Modal - Simple version without Map component */}
+      {/* Custom Animated Modal */}
       <Modal
         visible={mapVisible}
-        animationType="slide"
-        transparent={false}
-        onRequestClose={() => setMapVisible(false)}
+        transparent={true}
+        onRequestClose={closeLocationModal}
       >
-        <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }}>
-          <View style={styles.modalHeader}>
-            <TouchableOpacity 
-              style={styles.closeButton}
-              onPress={() => setMapVisible(false)}
-            >
-              <XCircleIcon size={24} color={theme.text} />
-            </TouchableOpacity>
-            <Text style={[styles.modalTitle, { color: theme.text }]}>Set Location</Text>
-            <TouchableOpacity
-              style={[styles.saveButton, { backgroundColor: theme.primary }]}
-              onPress={saveLocation}
-            >
-              <Text style={{ color: '#FFFFFF', fontWeight: 'bold' }}>Save</Text>
-            </TouchableOpacity>
-          </View>
-          
-          <ScrollView>
-            {/* Location name input */}
-            <View style={styles.locationInputContainer}>
-              <Text style={[styles.inputLabel, { color: theme.text }]}>Location Name</Text>
-              <RNTextInput
-                style={[styles.locationInput, { 
-                  borderColor: theme.border, 
-                  backgroundColor: theme.cardBackground,
-                  color: theme.text 
-                }]}
-                placeholder="Enter a descriptive name (e.g. Downtown Beirut)"
-                placeholderTextColor={theme.text + '50'}
-                value={locationName}
-                onChangeText={setLocationName}
-              />
-            </View>
-            
-            {/* Coordinates input */}
-            <View style={styles.coordinatesContainer}>
-              <Text style={[styles.inputLabel, { color: theme.text }]}>Coordinates</Text>
-              
-              <View style={styles.coordRow}>
-                <Text style={[styles.coordLabel, { color: theme.text }]}>Latitude:</Text>
-                <RNTextInput
-                  style={[styles.coordInput, { 
-                    borderColor: theme.border, 
-                    backgroundColor: theme.cardBackground,
-                    color: theme.text 
-                  }]}
-                  placeholder="e.g. 33.8938"
-                  placeholderTextColor={theme.text + '50'}
-                  keyboardType="numeric"
-                  value={String(mapRegion.latitude)}
-                  onChangeText={(text) => {
-                    const lat = parseFloat(text);
-                    if (!isNaN(lat)) {
-                      setMapRegion({...mapRegion, latitude: lat});
-                    }
-                  }}
-                />
-              </View>
-              
-              <View style={styles.coordRow}>
-                <Text style={[styles.coordLabel, { color: theme.text }]}>Longitude:</Text>
-                <RNTextInput
-                  style={[styles.coordInput, { 
-                    borderColor: theme.border, 
-                    backgroundColor: theme.cardBackground,
-                    color: theme.text 
-                  }]}
-                  placeholder="e.g. 35.5018"
-                  placeholderTextColor={theme.text + '50'}
-                  keyboardType="numeric"
-                  value={String(mapRegion.longitude)}
-                  onChangeText={(text) => {
-                    const lng = parseFloat(text);
-                    if (!isNaN(lng)) {
-                      setMapRegion({...mapRegion, longitude: lng});
-                    }
-                  }}
-                />
-              </View>
-            </View>
-            
-            {/* Predefined locations */}
-            <View style={styles.predefinedLocations}>
-              <Text style={[styles.inputLabel, { color: theme.text }]}>Select a Location</Text>
-              
-              {MOCK_LOCATIONS.map((mockLocation, index) => (
-                <TouchableOpacity
-                  key={index}
-                  style={[
-                    styles.predefinedLocationItem,
-                    { 
-                      backgroundColor: theme.cardBackground,
-                      borderWidth: locationName === mockLocation.name ? 2 : 1,
-                      borderColor: locationName === mockLocation.name ? theme.primary : theme.border,
-                    }
-                  ]}
-                  onPress={() => selectMockLocation(mockLocation)}
+        <Animated.View 
+          style={[
+            styles.modalOverlay,
+            { 
+              backgroundColor: 'rgba(0,0,0,0.5)',
+              opacity: modalOpacity
+            }
+          ]}
+        >
+          <Animated.View
+            style={[
+              styles.modalContainer,
+              { 
+                backgroundColor: theme.background,
+                transform: [{ translateY: slideAnimation }]
+              }
+            ]}
+          >
+            <SafeAreaView style={{ flex: 1 }}>
+              <View style={styles.modalHeader}>
+                <TouchableOpacity 
+                  style={styles.closeButton}
+                  onPress={closeLocationModal}
                 >
-                  <Text style={[styles.predefinedLocationName, { color: theme.text }]}>
-                    {mockLocation.name}
-                  </Text>
-                  <Text style={[styles.predefinedLocationCoords, { color: theme.text + '70' }]}>
-                    {mockLocation.latitude.toFixed(4)}, {mockLocation.longitude.toFixed(4)}
-                  </Text>
+                  <XCircleIcon size={24} color={theme.text} />
                 </TouchableOpacity>
-              ))}
-            </View>
-          </ScrollView>
-        </SafeAreaView>
+                <Text style={[styles.modalTitle, { color: theme.text }]}>Set Location</Text>
+                <TouchableOpacity
+                  style={[styles.saveButton, { backgroundColor: theme.primary }]}
+                  onPress={saveLocation}
+                >
+                  <Text style={{ color: '#FFFFFF', fontWeight: 'bold' }}>Save</Text>
+                </TouchableOpacity>
+              </View>
+              
+              <ScrollView>
+                {/* Location name input */}
+                <View style={styles.locationInputContainer}>
+                  <Text style={[styles.inputLabel, { color: theme.text }]}>Location Name</Text>
+                  <RNTextInput
+                    style={[styles.locationInput, { 
+                      borderColor: theme.border, 
+                      backgroundColor: theme.cardBackground,
+                      color: theme.text 
+                    }]}
+                    placeholder="Enter a descriptive name (e.g. Downtown Beirut)"
+                    placeholderTextColor={theme.text + '50'}
+                    value={locationName}
+                    onChangeText={setLocationName}
+                  />
+                </View>
+                
+                {/* Coordinates input */}
+                <View style={styles.coordinatesContainer}>
+                  <Text style={[styles.inputLabel, { color: theme.text }]}>Coordinates</Text>
+                  
+                  <View style={styles.coordRow}>
+                    <Text style={[styles.coordLabel, { color: theme.text }]}>Latitude:</Text>
+                    <RNTextInput
+                      style={[styles.coordInput, { 
+                        borderColor: theme.border, 
+                        backgroundColor: theme.cardBackground,
+                        color: theme.text 
+                      }]}
+                      placeholder="e.g. 33.8938"
+                      placeholderTextColor={theme.text + '50'}
+                      keyboardType="numeric"
+                      value={String(mapRegion.latitude)}
+                      onChangeText={(text) => {
+                        const lat = parseFloat(text);
+                        if (!isNaN(lat)) {
+                          setMapRegion({...mapRegion, latitude: lat});
+                        }
+                      }}
+                    />
+                  </View>
+                  
+                  <View style={styles.coordRow}>
+                    <Text style={[styles.coordLabel, { color: theme.text }]}>Longitude:</Text>
+                    <RNTextInput
+                      style={[styles.coordInput, { 
+                        borderColor: theme.border, 
+                        backgroundColor: theme.cardBackground,
+                        color: theme.text 
+                      }]}
+                      placeholder="e.g. 35.5018"
+                      placeholderTextColor={theme.text + '50'}
+                      keyboardType="numeric"
+                      value={String(mapRegion.longitude)}
+                      onChangeText={(text) => {
+                        const lng = parseFloat(text);
+                        if (!isNaN(lng)) {
+                          setMapRegion({...mapRegion, longitude: lng});
+                        }
+                      }}
+                    />
+                  </View>
+                </View>
+                
+                {/* Predefined locations */}
+                <View style={styles.predefinedLocations}>
+                  <Text style={[styles.inputLabel, { color: theme.text }]}>Select a Location</Text>
+                  
+                  {MOCK_LOCATIONS.map((mockLocation, index) => (
+                    <TouchableOpacity
+                      key={index}
+                      style={[
+                        styles.predefinedLocationItem,
+                        { 
+                          backgroundColor: theme.cardBackground,
+                          borderWidth: locationName === mockLocation.name ? 2 : 1,
+                          borderColor: locationName === mockLocation.name ? theme.primary : theme.border,
+                        }
+                      ]}
+                      onPress={() => selectMockLocation(mockLocation)}
+                    >
+                      <Text style={[styles.predefinedLocationName, { color: theme.text }]}>
+                        {mockLocation.name}
+                      </Text>
+                      <Text style={[styles.predefinedLocationCoords, { color: theme.text + '70' }]}>
+                        {mockLocation.latitude.toFixed(4)}, {mockLocation.longitude.toFixed(4)}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </ScrollView>
+            </SafeAreaView>
+          </Animated.View>
+        </Animated.View>
       </Modal>
     </SafeAreaView>
   );
@@ -698,6 +764,16 @@ const styles = StyleSheet.create({
   },
   predefinedLocationCoords: {
     fontSize: 14,
+  },
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+  },
+  modalContainer: {
+    height: '90%',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    overflow: 'hidden',
   },
 });
 
