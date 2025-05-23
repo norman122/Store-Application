@@ -9,6 +9,8 @@ import {
   Image,
   Alert,
   TextInput as RNTextInput,
+  Modal,
+  Platform,
 } from 'react-native';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -24,11 +26,38 @@ import { productSchema, ProductFormData } from '../../utils/validationSchema';
 import { productApi } from '../../utils/api';
 import { AuthStackParamList } from '../../navigation/stacks/AuthenticatedStack';
 
+// Import map component but handle possible import errors
+// Define a mock Region type if import fails
+type Region = {
+  latitude: number;
+  longitude: number;
+  latitudeDelta: number;
+  longitudeDelta: number;
+};
+
+// Mock locations for easy selection
+const MOCK_LOCATIONS = [
+  { name: 'Beirut, Lebanon', latitude: 33.8938, longitude: 35.5018 },
+  { name: 'Tripoli, Lebanon', latitude: 34.4409, longitude: 35.8433 },
+  { name: 'Tyre, Lebanon', latitude: 33.2704, longitude: 35.2037 },
+  { name: 'Byblos, Lebanon', latitude: 34.1232, longitude: 35.6512 },
+  { name: 'Sidon, Lebanon', latitude: 33.5571, longitude: 35.3729 },
+];
+
 type AddProductNavigationProp = NativeStackNavigationProp<AuthStackParamList>;
 
 const AddProductScreen: React.FC = () => {
   const [images, setImages] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  const [mapVisible, setMapVisible] = useState(false);
+  const [locationName, setLocationName] = useState(MOCK_LOCATIONS[0].name);
+  const [mapRegion, setMapRegion] = useState<Region>({
+    latitude: MOCK_LOCATIONS[0].latitude,
+    longitude: MOCK_LOCATIONS[0].longitude,
+    latitudeDelta: 0.01,
+    longitudeDelta: 0.01,
+  });
+  
   const { theme } = useTheme();
   const navigation = useNavigation<AddProductNavigationProp>();
 
@@ -46,9 +75,9 @@ const AddProductScreen: React.FC = () => {
       description: '',
       price: 0,
       location: {
-        name: '',
-        latitude: 0,
-        longitude: 0,
+        name: MOCK_LOCATIONS[0].name,
+        latitude: MOCK_LOCATIONS[0].latitude,
+        longitude: MOCK_LOCATIONS[0].longitude,
       },
     },
   });
@@ -130,15 +159,44 @@ const AddProductScreen: React.FC = () => {
     setImages(newImages);
   };
 
+  // Open location modal with mock data
   const handleSelectLocation = () => {
-    // Use mock location data
-    const mockLocation = {
-      name: 'Beirut, Lebanon',
-      latitude: 33.8938,
-      longitude: 35.5018,
-    };
+    setMapVisible(true);
+  };
+
+  // Update coordinates from user input
+  const handleLocationSelect = (latitude: number, longitude: number) => {
+    setMapRegion({
+      ...mapRegion,
+      latitude,
+      longitude,
+    });
+  };
+
+  // Save location to form
+  const saveLocation = () => {
+    if (!locationName.trim()) {
+      Alert.alert('Location Name Required', 'Please enter a name for this location');
+      return;
+    }
     
-    setValue('location', mockLocation);
+    setValue('location', {
+      name: locationName,
+      latitude: mapRegion.latitude,
+      longitude: mapRegion.longitude,
+    });
+    
+    setMapVisible(false);
+  };
+
+  // Select a mock location
+  const selectMockLocation = (location: typeof MOCK_LOCATIONS[0]) => {
+    setLocationName(location.name);
+    setMapRegion({
+      ...mapRegion,
+      latitude: location.latitude,
+      longitude: location.longitude,
+    });
   };
 
   const onSubmit = async (data: ProductFormData) => {
@@ -299,6 +357,24 @@ const AddProductScreen: React.FC = () => {
               {errors.location?.name && (
                 <Text style={styles.errorText}>{errors.location.name.message}</Text>
               )}
+              
+              {/* Show current location details if set */}
+              {location && location.name && (
+                <View style={[styles.locationDetailsContainer, { backgroundColor: theme.cardBackground, borderColor: theme.border }]}>
+                  <View style={styles.locationDetailRow}>
+                    <Text style={[styles.locationDetailLabel, { color: theme.text + '80' }]}>Name:</Text>
+                    <Text style={[styles.locationDetailValue, { color: theme.text }]}>
+                      {location.name}
+                    </Text>
+                  </View>
+                  <View style={styles.locationDetailRow}>
+                    <Text style={[styles.locationDetailLabel, { color: theme.text + '80' }]}>Coordinates:</Text>
+                    <Text style={[styles.locationDetailValue, { color: theme.text }]}>
+                      {location.latitude.toFixed(6)}, {location.longitude.toFixed(6)}
+                    </Text>
+                  </View>
+                </View>
+              )}
             </View>
           </View>
           
@@ -309,6 +385,124 @@ const AddProductScreen: React.FC = () => {
           />
         </View>
       </ScrollView>
+      
+      {/* Location Modal - Simple version without Map component */}
+      <Modal
+        visible={mapVisible}
+        animationType="slide"
+        transparent={false}
+        onRequestClose={() => setMapVisible(false)}
+      >
+        <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }}>
+          <View style={styles.modalHeader}>
+            <TouchableOpacity 
+              style={styles.closeButton}
+              onPress={() => setMapVisible(false)}
+            >
+              <XCircleIcon size={24} color={theme.text} />
+            </TouchableOpacity>
+            <Text style={[styles.modalTitle, { color: theme.text }]}>Set Location</Text>
+            <TouchableOpacity
+              style={[styles.saveButton, { backgroundColor: theme.primary }]}
+              onPress={saveLocation}
+            >
+              <Text style={{ color: '#FFFFFF', fontWeight: 'bold' }}>Save</Text>
+            </TouchableOpacity>
+          </View>
+          
+          <ScrollView>
+            {/* Location name input */}
+            <View style={styles.locationInputContainer}>
+              <Text style={[styles.inputLabel, { color: theme.text }]}>Location Name</Text>
+              <RNTextInput
+                style={[styles.locationInput, { 
+                  borderColor: theme.border, 
+                  backgroundColor: theme.cardBackground,
+                  color: theme.text 
+                }]}
+                placeholder="Enter a descriptive name (e.g. Downtown Beirut)"
+                placeholderTextColor={theme.text + '50'}
+                value={locationName}
+                onChangeText={setLocationName}
+              />
+            </View>
+            
+            {/* Coordinates input */}
+            <View style={styles.coordinatesContainer}>
+              <Text style={[styles.inputLabel, { color: theme.text }]}>Coordinates</Text>
+              
+              <View style={styles.coordRow}>
+                <Text style={[styles.coordLabel, { color: theme.text }]}>Latitude:</Text>
+                <RNTextInput
+                  style={[styles.coordInput, { 
+                    borderColor: theme.border, 
+                    backgroundColor: theme.cardBackground,
+                    color: theme.text 
+                  }]}
+                  placeholder="e.g. 33.8938"
+                  placeholderTextColor={theme.text + '50'}
+                  keyboardType="numeric"
+                  value={String(mapRegion.latitude)}
+                  onChangeText={(text) => {
+                    const lat = parseFloat(text);
+                    if (!isNaN(lat)) {
+                      setMapRegion({...mapRegion, latitude: lat});
+                    }
+                  }}
+                />
+              </View>
+              
+              <View style={styles.coordRow}>
+                <Text style={[styles.coordLabel, { color: theme.text }]}>Longitude:</Text>
+                <RNTextInput
+                  style={[styles.coordInput, { 
+                    borderColor: theme.border, 
+                    backgroundColor: theme.cardBackground,
+                    color: theme.text 
+                  }]}
+                  placeholder="e.g. 35.5018"
+                  placeholderTextColor={theme.text + '50'}
+                  keyboardType="numeric"
+                  value={String(mapRegion.longitude)}
+                  onChangeText={(text) => {
+                    const lng = parseFloat(text);
+                    if (!isNaN(lng)) {
+                      setMapRegion({...mapRegion, longitude: lng});
+                    }
+                  }}
+                />
+              </View>
+            </View>
+            
+            {/* Predefined locations */}
+            <View style={styles.predefinedLocations}>
+              <Text style={[styles.inputLabel, { color: theme.text }]}>Select a Location</Text>
+              
+              {MOCK_LOCATIONS.map((mockLocation, index) => (
+                <TouchableOpacity
+                  key={index}
+                  style={[
+                    styles.predefinedLocationItem,
+                    { 
+                      backgroundColor: theme.cardBackground,
+                      borderWidth: locationName === mockLocation.name ? 2 : 1,
+                      borderColor: locationName === mockLocation.name ? theme.primary : theme.border,
+                    }
+                  ]}
+                  onPress={() => selectMockLocation(mockLocation)}
+                >
+                  <Text style={[styles.predefinedLocationName, { color: theme.text }]}>
+                    {mockLocation.name}
+                  </Text>
+                  <Text style={[styles.predefinedLocationCoords, { color: theme.text + '70' }]}>
+                    {mockLocation.latitude.toFixed(4)}, {mockLocation.longitude.toFixed(4)}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </ScrollView>
+        </SafeAreaView>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -411,6 +605,99 @@ const styles = StyleSheet.create({
     color: '#F44336',
     fontSize: 12,
     marginTop: 4,
+  },
+  locationDetailsContainer: {
+    marginTop: 12,
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 12,
+  },
+  locationDetailRow: {
+    flexDirection: 'row',
+    marginBottom: 4,
+  },
+  locationDetailLabel: {
+    width: 100,
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  locationDetailValue: {
+    flex: 1,
+    fontSize: 14,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#ddd',
+  },
+  closeButton: {
+    padding: 4,
+  },
+  saveButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  locationInputContainer: {
+    padding: 16,
+  },
+  inputLabel: {
+    fontSize: 16,
+    fontWeight: '500',
+    marginBottom: 8,
+  },
+  locationInput: {
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 16,
+  },
+  coordinatesContainer: {
+    padding: 16,
+    paddingTop: 0,
+  },
+  coordRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  coordLabel: {
+    width: 80,
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  coordInput: {
+    flex: 1,
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 16,
+  },
+  predefinedLocations: {
+    padding: 16,
+    paddingTop: 0,
+    marginBottom: 20,
+  },
+  predefinedLocationItem: {
+    padding: 12,
+    borderWidth: 1,
+    borderRadius: 8,
+    marginBottom: 10,
+  },
+  predefinedLocationName: {
+    fontSize: 16,
+    fontWeight: '500',
+    marginBottom: 4,
+  },
+  predefinedLocationCoords: {
+    fontSize: 14,
   },
 });
 

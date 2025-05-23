@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -12,6 +12,8 @@ import {
   ActivityIndicator,
   ToastAndroid,
   Platform,
+  Modal,
+  KeyboardAvoidingView,
 } from 'react-native';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -26,6 +28,7 @@ import Button from '../../components/atoms/Button';
 import { productSchema, ProductFormData } from '../../utils/validationSchema';
 import { productApi } from '../../utils/api/services/productService';
 import { AuthStackParamList } from '../../navigation/stacks/AuthenticatedStack';
+import MapWithFallback from '../../components/MapWithFallback';
 
 // Base URL for image paths
 const BASE_URL = 'https://backend-practice.eurisko.me';
@@ -33,12 +36,44 @@ const BASE_URL = 'https://backend-practice.eurisko.me';
 type EditProductRouteProp = RouteProp<AuthStackParamList, 'EditProduct'>;
 type EditProductNavigationProp = NativeStackNavigationProp<AuthStackParamList>;
 
+// Define Region type here
+type Region = {
+  latitude: number;
+  longitude: number;
+  latitudeDelta: number;
+  longitudeDelta: number;
+};
+
+// Simple validation function
+const isValidCoordinate = (lat?: number, lng?: number): boolean => {
+  return (
+    lat !== undefined && 
+    lng !== undefined && 
+    !isNaN(lat) && 
+    !isNaN(lng) && 
+    lat !== 0 && 
+    lng !== 0 && 
+    lat >= -90 && 
+    lat <= 90 && 
+    lng >= -180 && 
+    lng <= 180
+  );
+};
+
 const EditProductScreen: React.FC = () => {
   const [images, setImages] = useState<any[]>([]);
   const [existingImages, setExistingImages] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
   const [product, setProduct] = useState<any>(null);
+  const [mapVisible, setMapVisible] = useState(false);
+  const [mapRegion, setMapRegion] = useState<Region>({
+    latitude: 33.8938, // Default to Beirut
+    longitude: 35.5018,
+    latitudeDelta: 0.01,
+    longitudeDelta: 0.01,
+  });
+  const [locationName, setLocationName] = useState('');
   
   const { theme } = useTheme();
   const navigation = useNavigation<EditProductNavigationProp>();
@@ -86,6 +121,17 @@ const EditProductScreen: React.FC = () => {
           price: productData.price,
           location: productData.location,
         });
+        
+        // Initialize map region if location exists
+        if (productData.location && productData.location.latitude && productData.location.longitude) {
+          setMapRegion({
+            latitude: productData.location.latitude,
+            longitude: productData.location.longitude,
+            latitudeDelta: 0.01,
+            longitudeDelta: 0.01,
+          });
+          setLocationName(productData.location.name || '');
+        }
         
         // Set existing images
         if (productData.images && productData.images.length > 0) {
@@ -172,15 +218,56 @@ const EditProductScreen: React.FC = () => {
     setExistingImages(newExistingImages);
   };
 
+  // Update the handleSelectLocation function to open the map modal
   const handleSelectLocation = () => {
-    // Use mock location data
-    const mockLocation = {
-      name: 'Beirut, Lebanon',
-      latitude: 33.8938,
-      longitude: 35.5018,
-    };
+    try {
+      // If location already exists in form, use that data
+      if (location?.latitude && location?.longitude && isValidCoordinate(location.latitude, location.longitude)) {
+        setMapRegion({
+          latitude: location.latitude,
+          longitude: location.longitude,
+          latitudeDelta: 0.01,
+          longitudeDelta: 0.01,
+        });
+        setLocationName(location.name || '');
+      }
+      
+      // Open the location input modal
+      setMapVisible(true);
+    } catch (error) {
+      console.error('Error in handleSelectLocation:', error);
+      Alert.alert('Error', 'Could not open the location selector. Please try again.');
+    }
+  };
+
+  // Handle location selection from map
+  const handleLocationSelect = (latitude: number, longitude: number) => {
+    setMapRegion({
+      ...mapRegion,
+      latitude,
+      longitude,
+    });
+  };
+
+  // Updated save location function
+  const saveLocation = () => {
+    if (!isValidCoordinate(mapRegion.latitude, mapRegion.longitude)) {
+      Alert.alert('Invalid Coordinates', 'Please enter valid latitude and longitude values');
+      return;
+    }
     
-    setValue('location', mockLocation);
+    if (!locationName.trim()) {
+      Alert.alert('Location Name Required', 'Please enter a name for this location');
+      return;
+    }
+    
+    setValue('location', {
+      name: locationName,
+      latitude: mapRegion.latitude,
+      longitude: mapRegion.longitude,
+    });
+    
+    setMapVisible(false);
   };
 
   const handleImagePicker = () => {
@@ -449,6 +536,29 @@ const EditProductScreen: React.FC = () => {
               {errors.location?.name && (
                 <Text style={styles.errorText}>{errors.location.name.message}</Text>
               )}
+              
+              {/* Show location details if location is selected */}
+              {isValidCoordinate(location.latitude, location.longitude) && (
+                <View style={styles.locationDetailsContainer}>
+                  <View style={styles.locationDetailRow}>
+                    <Text style={[styles.locationDetailLabel, { color: theme.text + '80' }]}>
+                      Name:
+                    </Text>
+                    <Text style={[styles.locationDetailValue, { color: theme.text }]}>
+                      {location.name || 'Unknown location'}
+                    </Text>
+                  </View>
+                  
+                  <View style={styles.locationDetailRow}>
+                    <Text style={[styles.locationDetailLabel, { color: theme.text + '80' }]}>
+                      Coordinates:
+                    </Text>
+                    <Text style={[styles.locationDetailValue, { color: theme.text }]}>
+                      {location.latitude.toFixed(6)}, {location.longitude.toFixed(6)}
+                    </Text>
+                  </View>
+                </View>
+              )}
             </View>
           </View>
           
@@ -469,10 +579,112 @@ const EditProductScreen: React.FC = () => {
           </View>
         </View>
       </ScrollView>
+      
+      {/* Location Input Modal with Map */}
+      <Modal
+        visible={mapVisible}
+        animationType="slide"
+        transparent={false}
+        onRequestClose={() => setMapVisible(false)}
+      >
+        <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }}>
+          <View style={styles.modalHeader}>
+            <TouchableOpacity
+              style={styles.closeButton}
+              onPress={() => setMapVisible(false)}
+            >
+              <XCircleIcon size={24} color={theme.text} />
+            </TouchableOpacity>
+            <Text style={[styles.modalTitle, { color: theme.text }]}>Set Location</Text>
+            <TouchableOpacity
+              style={[styles.saveButton, { backgroundColor: theme.primary }]}
+              onPress={saveLocation}
+            >
+              <Text style={{ color: '#FFFFFF', fontWeight: 'bold' }}>Save</Text>
+            </TouchableOpacity>
+          </View>
+          
+          <View style={styles.locationInputContainer}>
+            <Text style={[styles.inputLabel, { color: theme.text }]}>Location Name</Text>
+            <RNTextInput
+              style={[styles.locationInput, { 
+                borderColor: theme.border, 
+                backgroundColor: theme.cardBackground,
+                color: theme.text 
+              }]}
+              placeholder="Enter a descriptive name (e.g. Downtown Beirut)"
+              placeholderTextColor={theme.text + '50'}
+              value={locationName}
+              onChangeText={setLocationName}
+            />
+          </View>
+          
+          <View style={styles.mapContainer}>
+            <Text style={[styles.inputLabel, { color: theme.text, paddingHorizontal: 16 }]}>
+              Tap on the map to select location
+            </Text>
+            
+            {/* Map component with fallback UI */}
+            <MapWithFallback
+              initialRegion={mapRegion}
+              onRegionChange={region => setMapRegion(region)}
+              onLocationSelect={handleLocationSelect}
+              style={styles.mapWrapper}
+            />
+          </View>
+          
+          <View style={styles.coordinatesContainer}>
+            <Text style={[styles.inputLabel, { color: theme.text }]}>Coordinates</Text>
+            
+            <View style={styles.coordRow}>
+              <Text style={[styles.coordLabel, { color: theme.text }]}>Latitude:</Text>
+              <RNTextInput
+                style={[styles.coordInput, { 
+                  borderColor: theme.border, 
+                  backgroundColor: theme.cardBackground,
+                  color: theme.text 
+                }]}
+                placeholder="e.g. 33.8938"
+                placeholderTextColor={theme.text + '50'}
+                keyboardType="numeric"
+                value={String(mapRegion.latitude)}
+                onChangeText={(text) => {
+                  const lat = parseFloat(text);
+                  if (!isNaN(lat)) {
+                    setMapRegion({...mapRegion, latitude: lat});
+                  }
+                }}
+              />
+            </View>
+            
+            <View style={styles.coordRow}>
+              <Text style={[styles.coordLabel, { color: theme.text }]}>Longitude:</Text>
+              <RNTextInput
+                style={[styles.coordInput, { 
+                  borderColor: theme.border, 
+                  backgroundColor: theme.cardBackground,
+                  color: theme.text 
+                }]}
+                placeholder="e.g. 35.5018"
+                placeholderTextColor={theme.text + '50'}
+                keyboardType="numeric"
+                value={String(mapRegion.longitude)}
+                onChangeText={(text) => {
+                  const lng = parseFloat(text);
+                  if (!isNaN(lng)) {
+                    setMapRegion({...mapRegion, longitude: lng});
+                  }
+                }}
+              />
+            </View>
+          </View>
+        </SafeAreaView>
+      </Modal>
     </SafeAreaView>
   );
 };
 
+// Define styles
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -611,6 +823,190 @@ const styles = StyleSheet.create({
     color: 'white',
     fontWeight: 'bold',
     fontSize: 16,
+  },
+  mapPreviewContainer: {
+    marginTop: 12,
+    borderRadius: 8,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#ddd',
+  },
+  mapPreview: {
+    width: '100%',
+    height: 150,
+    borderRadius: 8,
+  },
+  mapLocation: {
+    padding: 8,
+    fontSize: 14,
+    backgroundColor: 'rgba(255, 255, 255, 0.8)',
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    textAlign: 'center',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#ddd',
+  },
+  closeButton: {
+    padding: 4,
+  },
+  saveButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  locationInputContainer: {
+    padding: 16,
+  },
+  locationInput: {
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 16,
+  },
+  mapInstructions: {
+    paddingHorizontal: 16,
+    paddingBottom: 8,
+    fontSize: 14,
+  },
+  fullMap: {
+    flex: 1,
+  },
+  mapErrorContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f8f8f8',
+  },
+  mapErrorText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#666',
+    marginBottom: 8,
+  },
+  mapErrorSubtext: {
+    fontSize: 14,
+    color: '#999',
+    textAlign: 'center',
+    paddingHorizontal: 20,
+  },
+  retryButton: {
+    marginTop: 20,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: 'white',
+    fontWeight: 'bold',
+  },
+  manualCoordinatesContainer: {
+    width: '100%',
+    padding: 16,
+  },
+  coordInputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  coordLabel: {
+    width: 80,
+    fontSize: 14,
+    color: '#666',
+  },
+  coordInput: {
+    flex: 1,
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 8,
+    fontSize: 14,
+  },
+  locationDetailsContainer: {
+    marginTop: 12,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    padding: 12,
+    backgroundColor: '#f8f8f8',
+  },
+  locationDetailRow: {
+    flexDirection: 'row',
+    marginBottom: 8,
+  },
+  locationDetailLabel: {
+    width: 100,
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  locationDetailValue: {
+    flex: 1,
+    fontSize: 14,
+  },
+  inputLabel: {
+    fontSize: 16,
+    fontWeight: '500',
+    marginBottom: 8,
+  },
+  coordinatesContainer: {
+    padding: 16,
+    marginTop: 8,
+  },
+  coordRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  locationHelpContainer: {
+    padding: 16,
+    marginTop: 16,
+  },
+  helpTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 8,
+  },
+  helpText: {
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  exampleCoords: {
+    marginTop: 16,
+  },
+  exampleCoordItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  exampleCoordName: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  exampleCoordValue: {
+    fontSize: 14,
+  },
+  mapContainer: {
+    flex: 1,
+    marginTop: 12,
+  },
+  mapWrapper: {
+    flex: 1,
+    margin: 16,
+    borderRadius: 12,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#ddd',
   },
 });
 
