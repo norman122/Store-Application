@@ -2,13 +2,15 @@ import React, { useEffect } from 'react';
 import { TouchableOpacity, Text, View, StyleSheet } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { HomeIcon, PlusCircleIcon, UserIcon, ChevronLeftIcon } from 'react-native-heroicons/outline';
-import { HomeIcon as HomeIconSolid, PlusCircleIcon as PlusCircleIconSolid, UserIcon as UserIconSolid } from 'react-native-heroicons/solid';
+import { HomeIcon, PlusCircleIcon, UserIcon, ChevronLeftIcon, ShoppingCartIcon } from 'react-native-heroicons/outline';
+import { HomeIcon as HomeIconSolid, PlusCircleIcon as PlusCircleIconSolid, UserIcon as UserIconSolid, ShoppingCartIcon as ShoppingCartIconSolid } from 'react-native-heroicons/solid';
 
 import ProductListingScreen from '../../screens/ProductListingScreen/ProductListingScreen';
 import ProductDetailsScreen from '../../screens/ProductDetailsScreen/ProductDetailsScreen';
+import CartScreen from '../../screens/CartScreen/CartScreen';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../store/authStore';
+import { useCartStore } from '../../store/cartStore';
 import { useApiUtils } from '../../utils/useApiUtils';
 
 // New screens to be created
@@ -32,6 +34,7 @@ export type AuthStackParamList = {
 export type TabNavigatorParamList = {
   Home: undefined;
   AddProduct: undefined;
+  Cart: undefined;
   Profile: undefined;
 };
 
@@ -60,6 +63,7 @@ const styles = StyleSheet.create({
 const TabNavigator = () => {
   const { theme, toggleTheme, isDarkMode } = useTheme();
   const { logout } = useAuth();
+  const { totalItems } = useCartStore();
   const { queryClient } = useApiUtils();
   
   // Fetch products when the user is first authenticated
@@ -101,6 +105,12 @@ const TabNavigator = () => {
             ) : (
               <PlusCircleIcon color={color} size={size} />
             );
+          } else if (route.name === 'Cart') {
+            return focused ? (
+              <ShoppingCartIconSolid color={color} size={size} />
+            ) : (
+              <ShoppingCartIcon color={color} size={size} />
+            );
           } else if (route.name === 'Profile') {
             return focused ? (
               <UserIconSolid color={color} size={size} />
@@ -140,6 +150,14 @@ const TabNavigator = () => {
         component={AddProductScreen} 
         options={{ 
           title: 'Add Product',
+        }}
+      />
+      <Tab.Screen 
+        name="Cart" 
+        component={CartScreen} 
+        options={{ 
+          title: 'Shopping Cart',
+          tabBarBadge: totalItems > 0 ? totalItems : undefined,
         }}
       />
       <Tab.Screen 

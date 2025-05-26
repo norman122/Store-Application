@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -6,7 +6,6 @@ import {
   Image,
   ScrollView,
   TouchableOpacity,
-  Share,
   ActivityIndicator,
   Dimensions,
   Alert,
@@ -31,14 +30,20 @@ import {
   CurrencyDollarIcon,
   ShoppingCartIcon,
   ArrowDownTrayIcon,
+  PlusIcon,
+  MinusIcon,
 } from 'react-native-heroicons/outline';
 import { useTheme } from '../../context/ThemeContext';
 import { AuthStackParamList } from '../../navigation/stacks/AuthenticatedStack';
 import Button from '../../components/atoms/Button';
 import { useProduct } from '../../store/productStore';
+import { useCartStore } from '../../store/cartStore';
 import { useAuth } from '../../store/authStore';
 import { User } from '../../utils/api/services/userService';
 import RNFS from 'react-native-fs';
+import Share from 'react-native-share';
+// Temporarily disabled animations due to Reanimated worklet configuration issue
+// import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 
 type ProductDetailsRouteProp = RouteProp<AuthStackParamList, 'ProductDetails'>;
 type ProductDetailsNavigationProp = NativeStackNavigationProp<AuthStackParamList>;
@@ -80,6 +85,7 @@ const ProductDetailsScreen: React.FC = () => {
   const navigation = useNavigation<ProductDetailsNavigationProp>();
   const { theme } = useTheme();
   const { user } = useAuth();
+  const { addToCart, getItemQuantity, updateQuantity } = useCartStore();
   const { productId } = route.params;
   
   // Add debug logs
@@ -89,6 +95,9 @@ const ProductDetailsScreen: React.FC = () => {
 
   // Use the product hook from the store
   const { product, isLoading, isError, error, refetch } = useProduct(productId);
+  
+  // Get cart quantity for this product
+  const cartQuantity = product ? getItemQuantity(product._id) : 0;
   
   // Refresh product when coming back from edit screen
   useEffect(() => {
@@ -123,18 +132,40 @@ const ProductDetailsScreen: React.FC = () => {
       Object.keys(navigation).join(', '));
   }, [product, isLoading, isError, error, user, navigation]);
 
-  const handleShare = async () => {
+  const handleShare = useCallback(async () => {
     if (!product) return;
 
     try {
-      await Share.share({
-        message: `Check out this amazing product: ${product.title} - $${product.price}`,
+      const shareOptions = {
         title: product.title,
-      });
+        message: `Check out this amazing product: ${product.title} for $${product.price}`,
+        url: `storeapp://product/${product._id}`, // Deep link URL
+        subject: `Check out ${product.title}`,
+      };
+      
+      await Share.open(shareOptions);
     } catch (error) {
       console.error('Error sharing product:', error);
     }
-  };
+  }, [product]);
+
+  // Handle add to cart
+  const handleAddToCart = useCallback(() => {
+    if (!product) return;
+    addToCart(product);
+    
+    if (Platform.OS === 'android') {
+      ToastAndroid.show('Added to cart!', ToastAndroid.SHORT);
+    } else {
+      Alert.alert('Success', 'Product added to cart!');
+    }
+  }, [product, addToCart]);
+
+  // Handle quantity update
+  const handleQuantityChange = useCallback((newQuantity: number) => {
+    if (!product) return;
+    updateQuantity(product._id, newQuantity);
+  }, [product, updateQuantity]);
 
   const handleSendEmail = () => {
     // Access email from product.owner.email or product.user.email
@@ -336,10 +367,13 @@ const ProductDetailsScreen: React.FC = () => {
     
     try {
       setIsSaving(true);
-      await Share.share({
+      const shareOptions = {
         url: imageUrl,
         message: `Check out this product image from ${product?.title}`,
-      });
+        title: 'Product Image',
+      };
+      
+      await Share.open(shareOptions);
     } catch (error) {
       console.error('Error sharing image:', error);
       Alert.alert('Error', 'Failed to share image');
@@ -541,6 +575,7 @@ const ProductDetailsScreen: React.FC = () => {
             }}
             style={styles.saveButton}
           >
+            <ArrowDownTrayIcon size={16} color={theme.text} />
           </TouchableOpacity>
         </View>
       </View>
@@ -608,16 +643,50 @@ const ProductDetailsScreen: React.FC = () => {
             </TouchableOpacity>
           </View>
           
-          {/* Add to Cart Button on its own line */}
+          {/* Add to Cart Section */}
           {!isOwner && (
-            <Button
-              title="Add to Cart"
-              onPress={() => {
-                ToastAndroid.show('Added to cart', ToastAndroid.SHORT);
-              }}
-              icon={<ShoppingCartIcon size={20} color="#FFFFFF" />}
-              style={styles.cartButton}
-            />
+            <View style={styles.cartSection}>
+              {cartQuantity > 0 ? (
+                <View style={[styles.quantityContainer, { backgroundColor: theme.cardBackground, borderColor: theme.border }]}>
+                  <View style={styles.quantityHeader}>
+                    <ShoppingCartIcon size={20} color={theme.primary} />
+                    <Text style={[styles.quantityLabel, { color: theme.text }]}>In Cart</Text>
+                    
+                  </View>
+                  <View style={styles.quantityControls}>
+                    <TouchableOpacity
+                      style={[styles.quantityButton, styles.quantityButtonMinus, { backgroundColor: theme.cardBackground, borderColor: theme.primary }]}
+                      onPress={() => handleQuantityChange(cartQuantity - 1)}
+                    >
+                      <MinusIcon size={18} color={theme.primary} />
+                    </TouchableOpacity>
+                    
+                    <View style={[styles.quantityDisplay, { backgroundColor: theme.primary + '10', borderColor: theme.primary }]}>
+                      <Text style={[styles.quantityText, { color: theme.primary }]}>
+                        {cartQuantity}
+                      </Text>
+                    </View>
+                    
+                    <TouchableOpacity
+                      style={[styles.quantityButton, styles.quantityButtonPlus, { backgroundColor: theme.primary }]}
+                      onPress={() => handleQuantityChange(cartQuantity + 1)}
+                    >
+                      <PlusIcon size={18} color="#FFFFFF" />
+                    </TouchableOpacity>
+                  </View>
+                  <Text style={[styles.quantitySubtext, { color: theme.text + '80' }]}>
+                    Tap + or - to adjust quantity
+                  </Text>
+                </View>
+              ) : (
+                <Button
+                  title="Add to Cart"
+                  onPress={handleAddToCart}
+                  icon={<ShoppingCartIcon size={20} color="#FFFFFF" />}
+                  style={styles.cartButton}
+                />
+              )}
+            </View>
           )}
         </View>
       </View>
@@ -1008,6 +1077,87 @@ const styles = StyleSheet.create({
   },
   disabledOption: {
     opacity: 0.6,
+  },
+  cartSection: {
+    marginTop: 12,
+  },
+  quantityContainer: {
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 16,
+    marginTop: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  quantityHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  quantityLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginLeft: 8,
+    flex: 1,
+  },
+  quantityBadge: {
+    minWidth: 24,
+    height: 24,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+  },
+  quantityBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  quantityControls: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
+  quantityButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginHorizontal: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  quantityButtonMinus: {
+    borderWidth: 2,
+  },
+  quantityButtonPlus: {
+    // Plus button uses primary background, no additional styles needed
+  },
+  quantityDisplay: {
+    minWidth: 60,
+    height: 44,
+    borderRadius: 22,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginHorizontal: 12,
+    borderWidth: 2,
+  },
+  quantityText: {
+    fontSize: 20,
+    fontWeight: 'bold',
+  },
+  quantitySubtext: {
+    fontSize: 12,
+    textAlign: 'center',
+    fontStyle: 'italic',
   },
 });
 

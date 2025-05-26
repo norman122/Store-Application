@@ -31,6 +31,7 @@ import { productSchema, ProductFormData } from '../../utils/validationSchema';
 import { productApi } from '../../utils/api/services/productService';
 import { AuthStackParamList } from '../../navigation/stacks/AuthenticatedStack';
 import MapWithFallback from '../../components/MapWithFallback';
+import { notificationService } from '../../services/notificationService';
 
 // Base URL for image paths
 const BASE_URL = 'https://backend-practice.eurisko.me';
@@ -362,6 +363,12 @@ const EditProductScreen: React.FC = () => {
         productId, 
         data, 
         allImages
+      );
+      
+      // Show notification for successful product update
+      await notificationService.showProductUpdatedNotification(
+        data.title,
+        productId
       );
       
       // Show success message based on platform

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
@@ -12,29 +12,41 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { PlusIcon, MagnifyingGlassIcon, XMarkIcon, AdjustmentsHorizontalIcon } from 'react-native-heroicons/outline';
+import { PlusIcon, MagnifyingGlassIcon, XMarkIcon, AdjustmentsHorizontalIcon, ShoppingCartIcon } from 'react-native-heroicons/outline';
+import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 
 import { useTheme } from '../../context/ThemeContext';
 import { useProductList, useProductSearch, useProductStore } from '../../store/productStore';
+import { useCartStore } from '../../store/cartStore';
+import { usePerformanceProfiler } from '../../hooks/usePerformanceProfiler';
 import { ProductFilters } from '../../utils/api/services/productService';
 import ProductCard from '../../components/molecules/ProductCard';
+import ProductSkeleton from '../../components/atoms/ProductSkeleton';
 import FilterBar from '../../components/atoms/FilterBar';
-import { AuthStackParamList } from '../../navigation/stacks/AuthenticatedStack';
+import { AuthStackParamList, TabNavigatorParamList } from '../../navigation/stacks/AuthenticatedStack';
+import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
+import { CompositeNavigationProp } from '@react-navigation/native';
 
-type ProductListScreenNavigationProp = NativeStackNavigationProp<AuthStackParamList>;
+type ProductListScreenNavigationProp = CompositeNavigationProp<
+  BottomTabNavigationProp<TabNavigatorParamList, 'Home'>,
+  NativeStackNavigationProp<AuthStackParamList>
+>;
 
 // Simple SearchBar component since we don't have the import
-const SearchBar = ({ value, onChangeText, placeholder }: {
+const SearchBar = React.memo(({ value, onChangeText, placeholder }: {
   value: string;
   onChangeText: (text: string) => void;
   placeholder?: string;
 }) => {
   const { theme } = useTheme();
   return (
-    <View style={[
-      styles.searchBarContainer,
-      { backgroundColor: theme.cardBackground, borderColor: theme.border }
-    ]}>
+    <Animated.View 
+      entering={FadeInDown.delay(100).springify()}
+      style={[
+        styles.searchBarContainer,
+        { backgroundColor: theme.cardBackground, borderColor: theme.border }
+      ]}
+    >
       <MagnifyingGlassIcon size={20} color={theme.secondary} />
       <TextInput
         style={[styles.searchInput, { color: theme.text }]}
@@ -48,17 +60,19 @@ const SearchBar = ({ value, onChangeText, placeholder }: {
           <XMarkIcon size={20} color={theme.secondary} />
         </TouchableOpacity>
       ) : null}
-    </View>
+    </Animated.View>
   );
-};
+});
 
 const ProductListScreen: React.FC = () => {
   const [isSearchActive, setIsSearchActive] = useState(false);
   const { theme } = useTheme();
   const navigation = useNavigation<ProductListScreenNavigationProp>();
+  const { logMetrics } = usePerformanceProfiler('ProductListScreen');
   
   // State from store
   const { searchQuery, filters } = useProductStore();
+  const { totalItems } = useCartStore();
   const { 
     setSearchQuery, 
     setFilters,
@@ -77,23 +91,28 @@ const ProductListScreen: React.FC = () => {
     isSearchLoading 
   } = useProductSearch(searchQuery);
   
-  // Combined data for display
-  const displayProducts = isSearchActive ? 
-    searchResults || [] : 
-    products || [];
+  // Memoized data for display
+  const displayProducts = useMemo(() => {
+    return isSearchActive ? searchResults || [] : products || [];
+  }, [isSearchActive, searchResults, products]);
+  
+  // Memoized loading state
+  const isDataLoading = useMemo(() => {
+    return isSearchActive ? isSearchLoading : isLoading;
+  }, [isSearchActive, isSearchLoading, isLoading]);
   
   // Handle reaching the end of the list
-  const handleEndReached = () => {
+  const handleEndReached = useCallback(() => {
     if (pagination?.hasNextPage && !isLoading && !isSearchActive) {
       setFilters({
         ...filters,
         page: (filters.page || 1) + 1
       });
     }
-  };
+  }, [pagination?.hasNextPage, isLoading, isSearchActive, filters, setFilters]);
   
   // Render footer with loading indicator or "no more items" message
-  const renderFooter = () => {
+  const renderFooter = useCallback(() => {
     if (isLoading && filters.page && filters.page > 1) {
       return (
         <View style={styles.footerContainer}>
@@ -113,43 +132,49 @@ const ProductListScreen: React.FC = () => {
     }
     
     return null;
-  };
+  }, [isLoading, filters.page, pagination?.hasNextPage, displayProducts.length, theme]);
   
   // Handle refreshing the list
-  const handleRefresh = () => {
+  const handleRefresh = useCallback(() => {
     refetch();
-  };
+  }, [refetch]);
   
   // Navigate to product details
-  const handleProductPress = (productId: string) => {
+  const handleProductPress = useCallback((productId: string) => {
     navigation.navigate('ProductDetails', { productId });
-  };
+  }, [navigation]);
   
   // Handle search submission
-  const handleSearch = (text: string) => {
+  const handleSearch = useCallback((text: string) => {
     setSearchQuery(text);
     setIsSearchActive(!!text);
-  };
+  }, [setSearchQuery]);
   
   // Handle applying filters
-  const handleApplyFilters = (newFilters: ProductFilters) => {
+  const handleApplyFilters = useCallback((newFilters: ProductFilters) => {
     setFilters(newFilters);
     setIsSearchActive(false);
-  };
+  }, [setFilters]);
   
   // Navigate to add product screen
-  const handleAddProduct = () => {
+  const handleAddProduct = useCallback(() => {
     navigation.navigate('TabNavigator');
-  };
+  }, [navigation]);
+  
+  // Render product item with animation
+  const renderProductItem = useCallback(({ item, index }: { item: any; index: number }) => (
+    <Animated.View entering={FadeInUp.delay(index * 100).springify()}>
+      <ProductCard
+        product={item}
+        onPress={() => handleProductPress(item._id)}
+      />
+    </Animated.View>
+  ), [handleProductPress]);
   
   // Render empty state
-  const renderEmptyState = () => {
-    if (isLoading || isSearchLoading) {
-      return (
-        <View style={styles.emptyContainer}>
-          <ActivityIndicator size="large" color={theme.primary} />
-        </View>
-      );
+  const renderEmptyState = useCallback(() => {
+    if (isDataLoading && displayProducts.length === 0) {
+      return <ProductSkeleton count={6} />;
     }
     
     const message = isSearchActive 
@@ -157,7 +182,7 @@ const ProductListScreen: React.FC = () => {
       : 'No products found';
     
     return (
-      <View style={styles.emptyContainer}>
+      <Animated.View entering={FadeInUp.springify()} style={styles.emptyContainer}>
         <Text style={[styles.emptyText, { color: theme.text }]}>{message}</Text>
         {!isSearchActive && (
           <TouchableOpacity
@@ -168,15 +193,38 @@ const ProductListScreen: React.FC = () => {
             <Text style={styles.addButtonText}>Add Product</Text>
           </TouchableOpacity>
         )}
-      </View>
+      </Animated.View>
     );
-  };
-  
+  }, [isDataLoading, displayProducts.length, isSearchActive, searchQuery, theme, handleAddProduct]);
+
+  // Memoized refresh control
+  const refreshControl = useMemo(() => (
+    <RefreshControl
+      refreshing={isLoading && filters.page === 1}
+      onRefresh={handleRefresh}
+      colors={[theme.primary]}
+      tintColor={theme.primary}
+    />
+  ), [isLoading, filters.page, handleRefresh, theme.primary]);
+
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
-      <View style={styles.header}>
+      <Animated.View entering={FadeInDown.springify()} style={styles.header}>
         <Text style={[styles.title, { color: theme.text }]}>Products</Text>
-      </View>
+        
+        {/* Cart button */}
+        <TouchableOpacity
+          style={[styles.cartButton, { backgroundColor: theme.primary }]}
+          onPress={() => navigation.navigate('Cart')}
+        >
+          <ShoppingCartIcon size={24} color="#FFFFFF" />
+          {totalItems > 0 && (
+            <View style={[styles.cartBadge, { backgroundColor: theme.error || '#FF3B30' }]}>
+              <Text style={styles.cartBadgeText}>{totalItems}</Text>
+            </View>
+          )}
+        </TouchableOpacity>
+      </Animated.View>
       
       <View style={styles.searchFilterContainer}>
         <SearchBar
@@ -191,37 +239,36 @@ const ProductListScreen: React.FC = () => {
         />
       </View>
       
-      <FlatList
-        data={displayProducts}
-        renderItem={({ item }) => (
-          <ProductCard
-            product={item}
-            onPress={() => handleProductPress(item._id)}
-          />
-        )}
-        keyExtractor={(item) => item._id}
-        numColumns={2}
-        contentContainerStyle={styles.productList}
-        onEndReached={handleEndReached}
-        onEndReachedThreshold={0.5}
-        ListFooterComponent={renderFooter}
-        ListEmptyComponent={renderEmptyState}
-        refreshControl={
-          <RefreshControl
-            refreshing={isLoading && filters.page === 1}
-            onRefresh={handleRefresh}
-            colors={[theme.primary]}
-            tintColor={theme.primary}
-          />
-        }
-      />
+      {isDataLoading && displayProducts.length === 0 ? (
+        <ProductSkeleton count={6} />
+      ) : (
+        <FlatList
+          data={displayProducts}
+          renderItem={renderProductItem}
+          keyExtractor={(item) => item._id}
+          numColumns={2}
+          contentContainerStyle={styles.productList}
+          onEndReached={handleEndReached}
+          onEndReachedThreshold={0.5}
+          ListFooterComponent={renderFooter}
+          ListEmptyComponent={renderEmptyState}
+          refreshControl={refreshControl}
+          showsVerticalScrollIndicator={false}
+          removeClippedSubviews={true}
+          maxToRenderPerBatch={10}
+          windowSize={10}
+          initialNumToRender={6}
+        />
+      )}
       
-      <TouchableOpacity
-        style={[styles.fab, { backgroundColor: theme.primary }]}
-        onPress={handleAddProduct}
-      >
-        <PlusIcon size={24} color="#FFFFFF" />
-      </TouchableOpacity>
+      <Animated.View entering={FadeInUp.delay(300).springify()}>
+        <TouchableOpacity
+          style={[styles.fab, { backgroundColor: theme.primary }]}
+          onPress={handleAddProduct}
+        >
+          <PlusIcon size={24} color="#FFFFFF" />
+        </TouchableOpacity>
+      </Animated.View>
     </SafeAreaView>
   );
 };
@@ -231,11 +278,38 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     padding: 16,
     paddingBottom: 8,
   },
   title: {
     fontSize: 24,
+    fontWeight: 'bold',
+  },
+  cartButton: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'relative',
+  },
+  cartBadge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    minWidth: 20,
+    height: 20,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 6,
+  },
+  cartBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 12,
     fontWeight: 'bold',
   },
   searchFilterContainer: {

@@ -27,6 +27,7 @@ import Button from '../../components/atoms/Button';
 import { productSchema, ProductFormData } from '../../utils/validationSchema';
 import { productApi } from '../../utils/api';
 import { AuthStackParamList } from '../../navigation/stacks/AuthenticatedStack';
+import { notificationService } from '../../services/notificationService';
 
 // Import map component but handle possible import errors
 // Define a mock Region type if import fails
@@ -255,6 +256,14 @@ const AddProductScreen: React.FC = () => {
     try {
       setLoading(true);
       const response = await productApi.createProduct(data, images);
+      
+      // Show notification for successful product addition
+      if (response?.data?._id) {
+        await notificationService.showProductAddedNotification(
+          data.title,
+          response.data._id
+        );
+      }
       
       Alert.alert(
         'Success', 

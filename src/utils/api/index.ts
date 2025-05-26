@@ -1,4 +1,4 @@
-import apiClient, { apiUtils } from './client';
+import apiClient from './client';
 import { QueryProvider, queryClient } from './queryProvider';
 
 // Auth services
@@ -11,4 +11,4 @@ export * from './services/userService';
 // Product services
 export * from './services/productService';
 
-export { apiClient, apiUtils, QueryProvider, queryClient }; 
+export { apiClient, QueryProvider, queryClient }; 

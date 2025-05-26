@@ -18,7 +18,6 @@ import { EyeIcon, EyeSlashIcon } from 'react-native-heroicons/outline';
 import { useTheme } from '../../context/ThemeContext';
 import { UnauthStackParamList } from '../../navigation/stacks/UnauthenticatedStack';
 import { useAuth } from '../../store/authStore';
-import { apiUtils } from '../../utils/api';
 
 type LoginScreenNavigationProp = NativeStackNavigationProp<UnauthStackParamList, 'Login'>;
 
