@@ -11,6 +11,7 @@ import {
   Alert,
   Share,
 } from 'react-native';
+import ShareUtils from '../../utils/shareUtils';
 import { MapPinIcon, ShareIcon } from 'react-native-heroicons/outline';
 // Temporarily disabled animations due to Reanimated worklet configuration issue
 // import Animated, { 
@@ -68,24 +69,10 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onPress, style }) =>
     onPress();
   }, [onPress]);
 
-  // Handle share with error handling
+  // Handle share with enhanced error handling and fallback
   const handleShare = useCallback(async (e: any) => {
     e.stopPropagation();
-    
-    try {
-      const shareUrl = `storeapp://product/${product._id}`;
-      const shareOptions = {
-        title: product.title,
-        message: `Check out this product: ${product.title} - ${shareUrl}`,
-        url: shareUrl,
-      };
-
-      await Share.share(shareOptions);
-    } catch (error) {
-      console.log('Share error:', error);
-      // Fallback: You could show an alert or copy to clipboard
-      // Alert.alert('Share', 'Sharing is not available on this device');
-    }
+    await ShareUtils.shareProduct(product);
   }, [product]);
 
   return (

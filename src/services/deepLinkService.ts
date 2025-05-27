@@ -41,8 +41,8 @@ class DeepLinkService {
     // For initial deep links, we need to check auth status
     try {
       // Import here to avoid circular dependencies
-      const { useAuth } = require('../store/authStore');
-      const authStore = useAuth.getState();
+      const { useAuthStore } = require('../store/authStore');
+      const authStore = useAuthStore.getState();
       this.handleDeepLink(url, authStore.isLoggedIn);
     } catch (error) {
       console.error('Error handling initial deep link:', error);
@@ -54,8 +54,8 @@ class DeepLinkService {
   private async handleRuntimeDeepLink(url: string) {
     // For runtime deep links, we can check current auth status
     try {
-      const { useAuth } = require('../store/authStore');
-      const authStore = useAuth.getState();
+      const { useAuthStore } = require('../store/authStore');
+      const authStore = useAuthStore.getState();
       this.handleDeepLink(url, authStore.isLoggedIn);
     } catch (error) {
       console.error('Error handling runtime deep link:', error);
@@ -78,13 +78,17 @@ class DeepLinkService {
   }
 
   parseDeepLink(url: string): DeepLinkData | null {
+    console.log('Parsing deep link:', url);
+    
     // Handle storeapp:// scheme
     if (url.startsWith('storeapp://')) {
       const path = url.replace('storeapp://', '');
+      console.log('Deep link path:', path);
       
       // Handle product deep links: storeapp://product/123
       if (path.startsWith('product/')) {
         const productId = path.replace('product/', '');
+        console.log('Product deep link detected, productId:', productId);
         return {
           screen: 'ProductDetails',
           params: { productId },
@@ -94,43 +98,24 @@ class DeepLinkService {
       // Handle other routes
       switch (path) {
         case 'home':
+          console.log('Home deep link detected');
           return { screen: 'TabNavigator' };
         case 'add-product':
+          console.log('Add product deep link detected');
           return { screen: 'AddProduct' };
         case 'cart':
+          console.log('Cart deep link detected');
           return { screen: 'TabNavigator' }; // Will default to cart tab
         case 'profile':
+          console.log('Profile deep link detected');
           return { screen: 'TabNavigator' }; // Will default to profile tab
         default:
+          console.log('Default deep link, navigating to home');
           return { screen: 'TabNavigator' };
       }
     }
 
-    // Handle https:// scheme for web links
-    if (url.startsWith('https://storeapp.com')) {
-      const urlObj = new URL(url);
-      const path = urlObj.pathname;
-
-      if (path.startsWith('/product/')) {
-        const productId = path.replace('/product/', '');
-        return {
-          screen: 'ProductDetails',
-          params: { productId },
-        };
-      }
-
-      if (path.startsWith('/edit-product/')) {
-        const productId = path.replace('/edit-product/', '');
-        return {
-          screen: 'EditProduct',
-          params: { productId },
-        };
-      }
-
-      // Default to home for other web links
-      return { screen: 'TabNavigator' };
-    }
-
+    console.log('Unsupported deep link format:', url);
     return null;
   }
 
@@ -140,8 +125,9 @@ class DeepLinkService {
       return;
     }
 
-    // If user is not logged in and trying to access a protected screen, store the deep link and navigate to login
-    if (isUserLoggedIn === false && this.isProtectedScreen(data.screen)) {
+    // If user is not logged in, store the deep link and navigate to login for ANY authenticated screen
+    // ProductDetails is only available in AuthenticatedStack, so we need to require login
+    if (isUserLoggedIn === false) {
       console.log('User not logged in, storing deep link and navigating to login:', data);
       this.storePendingDeepLink(data);
       
@@ -159,7 +145,11 @@ class DeepLinkService {
       // Wait a bit to ensure navigation is ready
       setTimeout(() => {
         if (this.navigationRef?.current?.isReady()) {
+          console.log(`Navigating to screen: ${data.screen} with params:`, data.params);
           this.navigationRef.current.navigate(data.screen as any, data.params);
+          console.log('Navigation command executed successfully');
+        } else {
+          console.warn('Navigation ref not ready for immediate navigation');
         }
       }, 100);
     } catch (error) {
@@ -167,11 +157,8 @@ class DeepLinkService {
     }
   }
 
-  private isProtectedScreen(screen: string): boolean {
-    // Define which screens require authentication
-    const protectedScreens = ['ProductDetails', 'EditProduct', 'AddProduct'];
-    return protectedScreens.includes(screen);
-  }
+  // All screens in AuthenticatedStack require authentication
+  // since they're not available in UnauthenticatedStack
 
   async storePendingDeepLink(data: DeepLinkData) {
     try {
@@ -212,10 +199,27 @@ class DeepLinkService {
       console.log('Handling pending deep link after authentication:', pendingLink);
       await this.clearPendingDeepLink();
       
-      // Navigate to the pending screen
+      // Navigate to the pending screen with longer delay to ensure navigation is ready
       setTimeout(() => {
-        this.navigateToScreen(pendingLink, true);
-      }, 500); // Small delay to ensure navigation is ready after auth
+        console.log('Attempting to navigate to pending deep link:', pendingLink);
+        if (this.navigationRef?.current?.isReady()) {
+          console.log('Navigation is ready, proceeding with navigation');
+          this.navigateToScreen(pendingLink, true);
+        } else {
+          console.warn('Navigation not ready, retrying in 1 second');
+          // Retry after another second if navigation isn't ready
+          setTimeout(() => {
+            if (this.navigationRef?.current?.isReady()) {
+              console.log('Navigation ready on retry, proceeding');
+              this.navigateToScreen(pendingLink, true);
+            } else {
+              console.error('Navigation still not ready after retry');
+            }
+          }, 1000);
+        }
+      }, 1000); // Increased delay to ensure navigation is ready after auth
+    } else {
+      console.log('No pending deep link found after authentication');
     }
   }
 
@@ -224,9 +228,10 @@ class DeepLinkService {
     return `storeapp://product/${productId}`;
   }
 
-  generateWebLink(productId: string): string {
-    return `https://storeapp.com/product/${productId}`;
-  }
+  // Note: Web links are not available since we don't have a real website
+  // generateWebLink(productId: string): string {
+  //   return `https://storeapp.com/product/${productId}`;
+  // }
 
   // Method to open external URLs
   async openURL(url: string) {

@@ -41,7 +41,9 @@ import { useCartStore } from '../../store/cartStore';
 import { useAuth } from '../../store/authStore';
 import { User } from '../../utils/api/services/userService';
 import RNFS from 'react-native-fs';
+import { Share as RNShare } from 'react-native';
 import Share from 'react-native-share';
+import ShareUtils from '../../utils/shareUtils';
 // Temporarily disabled animations due to Reanimated worklet configuration issue
 // import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 
@@ -134,19 +136,7 @@ const ProductDetailsScreen: React.FC = () => {
 
   const handleShare = useCallback(async () => {
     if (!product) return;
-
-    try {
-      const shareOptions = {
-        title: product.title,
-        message: `Check out this amazing product: ${product.title} for $${product.price}`,
-        url: `storeapp://product/${product._id}`, // Deep link URL
-        subject: `Check out ${product.title}`,
-      };
-      
-      await Share.open(shareOptions);
-    } catch (error) {
-      console.error('Error sharing product:', error);
-    }
+    await ShareUtils.shareProduct(product);
   }, [product]);
 
   // Handle add to cart
@@ -367,16 +357,9 @@ const ProductDetailsScreen: React.FC = () => {
     
     try {
       setIsSaving(true);
-      const shareOptions = {
-        url: imageUrl,
-        message: `Check out this product image from ${product?.title}`,
-        title: 'Product Image',
-      };
-      
-      await Share.open(shareOptions);
+      await ShareUtils.shareImage(imageUrl, product || undefined);
     } catch (error) {
       console.error('Error sharing image:', error);
-      Alert.alert('Error', 'Failed to share image');
     } finally {
       setIsSaving(false);
       setShowImagePopup(false);

@@ -45,7 +45,6 @@ const Navigator: React.FC = () => {
   return (
     <NavigationContainer 
       ref={navigationRef}
-      linking={isLoggedIn ? linking : undefined}
     >
       {isLoggedIn ? (
         <AuthenticatedStack />

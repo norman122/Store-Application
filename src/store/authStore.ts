@@ -249,6 +249,16 @@ export function useAuth() {
       setIsLoggedIn(true);
       setCurrentEmail(email);
       
+      // Handle pending deep links after successful login
+      try {
+        const { deepLinkService } = require('../services/deepLinkService');
+        await deepLinkService.handlePendingDeepLinkAfterAuth();
+        console.log('Pending deep link handled after login');
+      } catch (error) {
+        console.error('Error handling pending deep link after login:', error);
+        // Don't fail login if deep link handling fails
+      }
+      
       // Show welcome back notification
       try {
         // Get user's first name if available, otherwise use email
@@ -308,6 +318,16 @@ export function useAuth() {
       // After successful verification, set isLoggedIn to true
       // This will automatically redirect to the products screen
       setIsLoggedIn(true);
+      
+      // Handle pending deep links after successful verification
+      try {
+        const { deepLinkService } = require('../services/deepLinkService');
+        await deepLinkService.handlePendingDeepLinkAfterAuth();
+        console.log('Pending deep link handled after verification');
+      } catch (error) {
+        console.error('Error handling pending deep link after verification:', error);
+        // Don't fail verification if deep link handling fails
+      }
       
       // Show welcome notification for new users after verification
       try {

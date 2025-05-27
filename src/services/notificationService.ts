@@ -19,6 +19,11 @@ class NotificationService {
       await this.createChannel();
     }
 
+    // Set up iOS notification categories
+    if (Platform.OS === 'ios') {
+      await this.setupIOSCategories();
+    }
+
     // Set up notification event handlers
     this.setupEventHandlers();
   }
@@ -42,6 +47,36 @@ class NotificationService {
       importance: AndroidImportance.HIGH,
       description: 'Notifications for new products and updates',
     });
+  }
+
+  async setupIOSCategories() {
+    await notifee.setNotificationCategories([
+      {
+        id: 'product_actions',
+        actions: [
+          {
+            id: 'view_product',
+            title: 'View Product',
+            foreground: true,
+          },
+          {
+            id: 'share_product',
+            title: 'Share',
+            foreground: true,
+          },
+        ],
+      },
+      {
+        id: 'welcome_actions',
+        actions: [
+          {
+            id: 'browse_products',
+            title: 'Browse Products',
+            foreground: true,
+          },
+        ],
+      },
+    ]);
   }
 
   setupEventHandlers() {
@@ -91,10 +126,12 @@ class NotificationService {
       case 'view_product':
         if (data.productId) {
           const deepLink = `storeapp://product/${data.productId}`;
-          console.log('Opening product from action:', deepLink);
-          Linking.openURL(deepLink).catch((err: any) => {
-            console.error('Error opening deep link from action:', err);
-          });
+          console.log('Opening product from action using deep link service:', deepLink);
+          
+          // Use the deep link service instead of Linking.openURL
+          // Import here to avoid circular dependencies
+          const { deepLinkService } = require('./deepLinkService');
+          deepLinkService.handleDeepLink(deepLink);
         }
         break;
       
@@ -141,6 +178,13 @@ class NotificationService {
           },
           actions: [
             {
+              title: 'View Product',
+              pressAction: {
+                id: 'view_product',
+                launchActivity: 'default',
+              },
+            },
+            {
               title: 'Share',
               pressAction: {
                 id: 'share_product',
@@ -176,6 +220,18 @@ class NotificationService {
         android: {
           channelId: this.channelId,
           importance: AndroidImportance.DEFAULT,
+          actions: [
+            {
+              title: 'View Product',
+              pressAction: {
+                id: 'view_product',
+                launchActivity: 'default',
+              },
+            },
+          ],
+        },
+        ios: {
+          categoryId: 'product_actions',
         },
       });
     } catch (error) {

@@ -58,14 +58,6 @@
 				<string>storeapp</string>
 			</array>
 		</dict>
-		<dict>
-			<key>CFBundleURLName</key>
-			<string>storeapp.weblink</string>
-			<key>CFBundleURLSchemes</key>
-			<array>
-				<string>https</string>
-			</array>
-		</dict>
 	</array>
 </dict>
 </plist>

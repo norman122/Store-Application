@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StoreApp - Marketplace</title>
+    <meta name="description" content="StoreApp - The best marketplace for buying and selling products">
+    
+    <!-- Open Graph tags for social sharing -->
+    <meta property="og:title" content="StoreApp - Marketplace">
+    <meta property="og:description" content="The best marketplace for buying and selling products">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://storeapp-links.netlify.app">
+    
+    <!-- Twitter Card tags -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="StoreApp - Marketplace">
+    <meta name="twitter:description" content="The best marketplace for buying and selling products">
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            text-align: center;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 400px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 40px 30px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .logo {
+            font-size: 3rem;
+            margin-bottom: 10px;
+        }
+        
+        h1 {
+            font-size: 2rem;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+        
+        .subtitle {
+            font-size: 1.1rem;
+            margin-bottom: 30px;
+            opacity: 0.9;
+        }
+        
+        .btn {
+            display: inline-block;
+            padding: 15px 30px;
+            margin: 10px;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            text-decoration: none;
+            border-radius: 50px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+        }
+        
+        .btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+        }
+        
+        .btn-primary {
+            background: #4CAF50;
+            border-color: #4CAF50;
+        }
+        
+        .btn-primary:hover {
+            background: #45a049;
+        }
+        
+        .loading {
+            margin-top: 20px;
+            opacity: 0.8;
+        }
+        
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+            margin-right: 10px;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .footer {
+            margin-top: 30px;
+            font-size: 0.9rem;
+            opacity: 0.7;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">🛍️</div>
+        <h1>StoreApp</h1>
+        <p class="subtitle">The best marketplace for buying and selling products</p>
+        
+        <div id="loading" class="loading" style="display: none;">
+            <div class="spinner"></div>
+            Opening StoreApp...
+        </div>
+        
+        <div id="buttons">
+            <a href="#" id="openApp" class="btn btn-primary">Open in App</a>
+            <a href="#" id="downloadApp" class="btn">Download App</a>
+        </div>
+        
+        <div class="footer">
+            <p>Available on iOS and Android</p>
+        </div>
+    </div>
+
+    <script>
+        // Detect user's platform
+        function detectPlatform() {
+            const userAgent = navigator.userAgent || navigator.vendor || window.opera;
+            
+            if (/iPad|iPhone|iPod/.test(userAgent) && !window.MSStream) {
+                return 'ios';
+            } else if (/android/i.test(userAgent)) {
+                return 'android';
+            } else {
+                return 'web';
+            }
+        }
+        
+        // Get app store URLs
+        function getAppStoreUrl(platform) {
+            switch(platform) {
+                case 'ios':
+                    return 'https://apps.apple.com/app/storeapp/id123456789'; // Replace with your actual App Store URL
+                case 'android':
+                    return 'https://play.google.com/store/apps/details?id=com.storeapp'; // Replace with your actual Play Store URL
+                default:
+                    return 'https://storeapp.com'; // Your website or a generic landing page
+            }
+        }
+        
+        // Try to open the app, fallback to app store
+        function openApp() {
+            const platform = detectPlatform();
+            const deepLink = 'storeapp://home';
+            
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('buttons').style.display = 'none';
+            
+            // Try to open the app
+            window.location.href = deepLink;
+            
+            // Fallback to app store after a delay
+            setTimeout(() => {
+                window.location.href = getAppStoreUrl(platform);
+            }, 2000);
+        }
+        
+        // Set up event listeners
+        document.addEventListener('DOMContentLoaded', function() {
+            const platform = detectPlatform();
+            
+            document.getElementById('openApp').addEventListener('click', function(e) {
+                e.preventDefault();
+                openApp();
+            });
+            
+            document.getElementById('downloadApp').addEventListener('click', function(e) {
+                e.preventDefault();
+                window.location.href = getAppStoreUrl(platform);
+            });
+            
+            // Auto-try to open app after 1 second
+            setTimeout(openApp, 1000);
+        });
+    </script>
+</body>
+</html> 

@@ -1,10 +1,11 @@
 import { LinkingOptions } from '@react-navigation/native';
-import { AuthStackParamList } from './stacks/AuthenticatedStack';
 
-const linking: LinkingOptions<AuthStackParamList> = {
-  prefixes: ['storeapp://', 'https://storeapp.com'],
+// Create a more flexible linking configuration that works for both stacks
+const linking: LinkingOptions<any> = {
+  prefixes: ['storeapp://'],
   config: {
     screens: {
+      // Authenticated Stack screens
       TabNavigator: {
         screens: {
           Home: 'home',
@@ -14,17 +15,22 @@ const linking: LinkingOptions<AuthStackParamList> = {
         },
       },
       ProductDetails: {
-        path: '/product/:productId',
+        path: 'product/:productId',
         parse: {
           productId: (productId: string) => productId,
         },
       },
       EditProduct: {
-        path: '/edit-product/:productId',
+        path: 'edit-product/:productId',
         parse: {
           productId: (productId: string) => productId,
         },
       },
+      // Unauthenticated Stack screens
+      Login: 'login',
+      Signup: 'signup',
+      Verification: 'verification',
+      ForgotPassword: 'forgot-password',
     },
   },
 };
