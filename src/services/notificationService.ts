@@ -3,7 +3,7 @@ import { Platform } from 'react-native';
 
 export interface NotificationData {
   productId?: string;
-  type?: 'product_added' | 'product_updated' | 'general';
+  type?: 'product_added' | 'product_updated' | 'general' | 'welcome_back' | 'welcome_new';
   [key: string]: any;
 }
 
@@ -110,6 +110,14 @@ class NotificationService {
         }
         break;
       
+      case 'browse_products':
+        const homeDeepLink = 'storeapp://home';
+        console.log('Opening home from welcome notification action:', homeDeepLink);
+        Linking.openURL(homeDeepLink).catch((err: any) => {
+          console.error('Error opening home from notification action:', err);
+        });
+        break;
+      
       default:
         console.log('Unknown notification action:', actionId);
     }
@@ -191,6 +199,76 @@ class NotificationService {
       });
     } catch (error) {
       console.error('Error showing general notification:', error);
+    }
+  }
+
+  async showWelcomeBackNotification(userName?: string) {
+    try {
+      const displayName = userName ? userName : 'there';
+      await notifee.displayNotification({
+        title: 'Welcome Back! 👋',
+        body: `Hi ${displayName}! Great to see you again. Check out what's new in the store!`,
+        data: {
+          type: 'welcome_back',
+        },
+        android: {
+          channelId: this.channelId,
+          importance: AndroidImportance.DEFAULT,
+          style: {
+            type: AndroidStyle.BIGTEXT,
+            text: `Welcome back to StoreApp! We've missed you. Discover amazing new products and great deals waiting for you.`,
+          },
+          actions: [
+            {
+              title: 'Browse Products',
+              pressAction: {
+                id: 'browse_products',
+                launchActivity: 'default',
+              },
+            },
+          ],
+        },
+        ios: {
+          categoryId: 'welcome_actions',
+        },
+      });
+    } catch (error) {
+      console.error('Error showing welcome back notification:', error);
+    }
+  }
+
+  async showWelcomeNewUserNotification(userName?: string) {
+    try {
+      const displayName = userName ? userName : 'there';
+      await notifee.displayNotification({
+        title: 'Welcome to StoreApp! 🎉',
+        body: `Hi ${displayName}! Your account is ready. Start exploring amazing products!`,
+        data: {
+          type: 'welcome_new',
+        },
+        android: {
+          channelId: this.channelId,
+          importance: AndroidImportance.HIGH,
+          style: {
+            type: AndroidStyle.BIGTEXT,
+            text: `Welcome to StoreApp! You're all set up and ready to discover amazing products, connect with sellers, and find great deals. Start your shopping journey now!`,
+          },
+          actions: [
+            {
+              title: 'Start Shopping',
+              pressAction: {
+                id: 'browse_products',
+                launchActivity: 'default',
+              },
+            },
+          ],
+        },
+        ios: {
+          categoryId: 'welcome_actions',
+        },
+      });
+    } catch (error) {
+      console.error('Error showing welcome new user notification:', error);
     }
   }
 

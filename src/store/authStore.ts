@@ -15,6 +15,7 @@ import {
 import { User } from '../utils/api/services/userService';
 import { queryClient } from '../utils/api/queryProvider';
 import { useEffect } from 'react';
+import { notificationService } from '../services/notificationService';
 
 // Define the store state
 interface AuthState {
@@ -247,6 +248,18 @@ export function useAuth() {
       
       setIsLoggedIn(true);
       setCurrentEmail(email);
+      
+      // Show welcome back notification
+      try {
+        // Get user's first name if available, otherwise use email
+        const userName = user?.firstName || email.split('@')[0];
+        await notificationService.showWelcomeBackNotification(userName);
+        console.log('Welcome back notification shown');
+      } catch (error) {
+        console.error('Error showing welcome notification:', error);
+        // Don't fail login if notification fails
+      }
+      
       return true;
     } catch (error: any) {
       console.error('Login error details:', error);
@@ -295,6 +308,16 @@ export function useAuth() {
       // After successful verification, set isLoggedIn to true
       // This will automatically redirect to the products screen
       setIsLoggedIn(true);
+      
+      // Show welcome notification for new users after verification
+      try {
+        const userName = user?.firstName || email.split('@')[0];
+        await notificationService.showWelcomeNewUserNotification(userName);
+        console.log('Welcome new user notification shown after verification');
+      } catch (error) {
+        console.error('Error showing welcome notification after verification:', error);
+        // Don't fail verification if notification fails
+      }
       
       return true;
     } catch (error: any) {
