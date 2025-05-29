@@ -28,14 +28,8 @@ const Navigator: React.FC = () => {
   }, [isLoggedIn, initialized]);
 
   if (!initialized) {
-    return (
-      <View style={[styles.loadingContainer, { backgroundColor: theme.background }]}>
-        <ActivityIndicator size="large" color={theme.primary} />
-        <Text style={[styles.loadingText, { color: theme.text }]}>
-          Loading app...
-        </Text>
-      </View>
-    );
+    // Return null to show the native splash screen
+    return null;
   }
 
   if (error) {
