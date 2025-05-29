@@ -1,6 +1,8 @@
 apply plugin: "com.android.application"
 apply plugin: "org.jetbrains.kotlin.android"
 apply plugin: "com.facebook.react"
+apply plugin: "com.google.gms.google-services"
+apply plugin: "com.google.firebase.crashlytics"
 
 // Add this at the top to import the properties reading functionality
 import java.io.FileInputStream
@@ -110,6 +112,11 @@ android {
     buildTypes {
         debug {
             signingConfig signingConfigs.debug
+            // Enable Crashlytics debug mode
+            manifestPlaceholders = [
+                crashlytics_debug_enabled: true,
+                crashlytics_auto_collection_enabled: true
+            ]
         }
         release {
             // Caution! In production, you need to generate your own keystore file.
@@ -124,6 +131,13 @@ android {
 dependencies {
     // The version of react-native is set by the React Native Gradle Plugin
     implementation("com.facebook.react:react-android")
+
+    // Firebase BoM
+    implementation platform('com.google.firebase:firebase-bom:32.7.0')
+    
+    // Firebase Crashlytics
+    implementation 'com.google.firebase:firebase-crashlytics'
+    implementation 'com.google.firebase:firebase-analytics'
 
     if (hermesEnabled.toBoolean()) {
         implementation("com.facebook.react:hermes-android")

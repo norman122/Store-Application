@@ -15,13 +15,18 @@ import {
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { launchImageLibrary, ImageLibraryOptions, launchCamera, CameraOptions, PhotoQuality } from 'react-native-image-picker';
-import { PencilIcon, CameraIcon, PhotoIcon, XMarkIcon, TrashIcon } from 'react-native-heroicons/outline';
+import { PencilIcon, CameraIcon, PhotoIcon, XMarkIcon, TrashIcon, WrenchScrewdriverIcon } from 'react-native-heroicons/outline';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth, useAuthStore } from '../../store/authStore';
 import Input from '../../components/atoms/Input';
 import Button from '../../components/atoms/Button';
 import { ProfileUpdateFormData, profileUpdateSchema } from '../../utils/validationSchema';
+import { AuthStackParamList } from '../../navigation/stacks/AuthenticatedStack';
+
+type ProfileScreenNavigationProp = NativeStackNavigationProp<AuthStackParamList, 'TabNavigator'>;
 
 // Function to handle both relative and absolute URLs
 const getImageUrl = (relativeUrl: string) => {
@@ -51,6 +56,7 @@ const ProfileScreen: React.FC = () => {
   const [showImageSourceModal, setShowImageSourceModal] = useState(false);
   const { theme } = useTheme();
   const { user, updateProfile, loading, error } = useAuth();
+  const navigation = useNavigation<ProfileScreenNavigationProp>();
 
   const {
     control,
@@ -479,6 +485,27 @@ const ProfileScreen: React.FC = () => {
             <Text style={[styles.infoValue, { color: theme.text }]}>{displayUser.id}</Text>
           </View>
         </View>
+        
+        {/* Developer Tools Section - Only visible in development */}
+        {__DEV__ && (
+          <View style={[styles.infoCard, { backgroundColor: theme.cardBackground }]}>
+            <Text style={[styles.infoCardTitle, { color: theme.text }]}>Developer Tools</Text>
+            
+            <TouchableOpacity
+              style={[styles.developerButton, { backgroundColor: theme.primary + '20', borderColor: theme.primary }]}
+              onPress={() => navigation.navigate('CrashlyticsTest')}
+            >
+              <WrenchScrewdriverIcon size={20} color={theme.primary} />
+              <Text style={[styles.developerButtonText, { color: theme.primary }]}>
+                Crashlytics Test Screen
+              </Text>
+            </TouchableOpacity>
+            
+            <Text style={[styles.developerNote, { color: theme.text + '60' }]}>
+              This section is only visible in development mode
+            </Text>
+          </View>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -652,6 +679,24 @@ const styles = StyleSheet.create({
   modalCancelButtonText: {
     fontSize: 16,
     fontWeight: '600',
+  },
+  developerButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderWidth: 1,
+    borderColor: '#007AFF',
+    borderRadius: 8,
+    marginBottom: 12,
+  },
+  developerButtonText: {
+    marginLeft: 8,
+    fontWeight: '500',
+  },
+  developerNote: {
+    fontSize: 12,
+    color: '#666',
   },
 });
 

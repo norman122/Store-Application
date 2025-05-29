@@ -10,12 +10,17 @@ import Navigator from './src/navigation/Navigator';
 import { QueryProvider } from './src/utils/api';
 import { notificationService } from './src/services/notificationService';
 import { deepLinkService } from './src/services/deepLinkService';
+import firebaseService from './src/config/firebase';
+import ErrorBoundary from './src/components/ErrorBoundary';
 
 function App(): React.JSX.Element {
   useEffect(() => {
     // Initialize services
     const initializeServices = async () => {
       try {
+        // Initialize Firebase and Crashlytics
+        console.log('Firebase and Crashlytics initialized');
+        
         // Initialize notification service
         await notificationService.initialize();
         console.log('Notification service initialized');
@@ -30,6 +35,8 @@ function App(): React.JSX.Element {
         };
       } catch (error) {
         console.error('Error initializing services:', error);
+        // Log error to Crashlytics
+        firebaseService.recordError(error as Error, 'Service Initialization Error');
       }
     };
 
@@ -37,15 +44,17 @@ function App(): React.JSX.Element {
   }, []);
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <QueryProvider>
-        <SafeAreaProvider>
-          <ThemeProvider>
-            <Navigator />
-          </ThemeProvider>
-        </SafeAreaProvider>
-      </QueryProvider>
-    </GestureHandlerRootView>
+    <ErrorBoundary>
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <QueryProvider>
+          <SafeAreaProvider>
+            <ThemeProvider>
+              <Navigator />
+            </ThemeProvider>
+          </SafeAreaProvider>
+        </QueryProvider>
+      </GestureHandlerRootView>
+    </ErrorBoundary>
   );
 }
 

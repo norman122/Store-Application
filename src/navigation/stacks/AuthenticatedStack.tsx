@@ -17,6 +17,7 @@ import { useApiUtils } from '../../utils/useApiUtils';
 import ProfileScreen from '../../screens/ProfileScreen/ProfileScreen';
 import AddProductScreen from '../../screens/AddProductScreen/AddProductScreen';
 import EditProductScreen from '../../screens/EditProductScreen/EditProductScreen';
+import CrashlyticsTestScreen from '../../screens/CrashlyticsTestScreen';
 
 export type AuthStackParamList = {
   // Tab navigator
@@ -29,6 +30,7 @@ export type AuthStackParamList = {
     timestamp?: number;
   };
   EditProduct: { productId: string };
+  CrashlyticsTest: undefined;
 };
 
 export type TabNavigatorParamList = {
@@ -219,6 +221,11 @@ const AuthenticatedStack: React.FC = () => {
         name="EditProduct"
         component={EditProductScreen}
         options={{ title: 'Edit Product' }}
+      />
+      <Stack.Screen
+        name="CrashlyticsTest"
+        component={CrashlyticsTestScreen}
+        options={{ title: 'Crashlytics Test' }}
       />
     </Stack.Navigator>
   );
