@@ -1,97 +1,247 @@
-This is a new [**React Native**](https://reactnative.dev) project, bootstrapped using [`@react-native-community/cli`](https://github.com/react-native-community/cli).
+# StoreApp 🛍️
 
-# Getting Started
+A modern React Native e-commerce application built as part of the Eurisko Academy assignment. This app provides a complete shopping experience with product browsing, cart management, user authentication, and more.
 
-> **Note**: Make sure you have completed the [Set Up Your Environment](https://reactnative.dev/docs/set-up-your-environment) guide before proceeding.
+## 📱 Features
 
-## Step 1: Start Metro
+### Core Features
 
-First, you will need to run **Metro**, the JavaScript build tool for React Native.
+- **Product Management**: Browse, search, and filter products
+- **Shopping Cart**: Add/remove items, quantity management, persistent cart
+- **User Authentication**: Sign up, login, OTP verification, password reset
+- **User Profile**: Profile management with image upload
+- **Product Search**: Real-time product search functionality
+- **Categories & Filters**: Filter products by category, price, stock status
+- **Responsive Design**: Optimized for both iOS and Android
 
-To start the Metro dev server, run the following command from the root of your React Native project:
+### Advanced Features
 
-```sh
-# Using npm
-npm start
+- **Push Notifications**: Real-time notifications using Notifee
+- **Deep Linking**: Navigate directly to specific products/screens
+- **Offline Support**: Persistent cart and user data
+- **Error Tracking**: Firebase Crashlytics integration
+- **Analytics**: Firebase Analytics for user behavior tracking
+- **Image Handling**: Camera roll integration and image picker
+- **Maps Integration**: Location services and maps
+- **State Management**: Zustand for efficient state management
+- **API Integration**: React Query for data fetching and caching
 
-# OR using Yarn
-yarn start
+## 🛠️ Tech Stack
+
+- **Framework**: React Native 0.79.2
+- **Language**: TypeScript
+- **State Management**: Zustand with persistence
+- **Data Fetching**: TanStack React Query (v5)
+- **Navigation**: React Navigation v7
+- **UI Components**: React Native Vector Icons, Heroicons
+- **Forms**: React Hook Form with Zod validation
+- **Storage**: AsyncStorage
+- **Notifications**: Notifee
+- **Firebase**: Analytics, Crashlytics
+- **Maps**: React Native Maps
+- **Camera**: React Native Vision Camera
+- **Testing**: Jest, React Native Testing Library
+
+## 📋 Prerequisites
+
+Before you begin, ensure you have the following installed:
+
+- **Node.js**: >= 18.0.0
+- **React Native CLI**: Latest version
+- **Android Studio**: For Android development
+- **Xcode**: For iOS development (macOS only)
+- **CocoaPods**: For iOS dependencies
+- **Java Development Kit (JDK)**: Version 17
+
+> **Note**: Make sure you have completed the [React Native Environment Setup](https://reactnative.dev/docs/set-up-your-environment) guide before proceeding.
+
+## 🚀 Getting Started
+
+### 1. Clone the Repository
+
+```bash
+git clone <repository-url>
+cd StoreApp
 ```
 
-## Step 2: Build and run your app
+### 2. Install Dependencies
 
-With Metro running, open a new terminal window/pane from the root of your React Native project, and use one of the following commands to build and run your Android or iOS app:
+```bash
+# Install Node.js dependencies
+npm install
+
+# For iOS only - Install CocoaPods dependencies
+cd ios && bundle install && bundle exec pod install && cd ..
+```
+
+### 3. Environment Setup
+
+Create a `.env` file in the root directory and add your configuration:
+
+```env
+API_BASE_URL=your_api_base_url
+FIREBASE_API_KEY=your_firebase_api_key
+# Add other environment variables as needed
+```
+
+### 4. Start Metro Bundler
+
+```bash
+npm start
+```
+
+### 5. Run the Application
+
+#### For Android:
+
+```bash
+npm run android
+```
+
+#### For iOS:
+
+```bash
+npm run ios
+```
+
+## 📁 Project Structure
+
+```
+StoreApp/
+├── src/
+│   ├── components/          # Reusable UI components
+│   ├── screens/            # Application screens
+│   ├── navigation/         # Navigation configuration
+│   ├── store/             # Zustand stores
+│   │   ├── authStore.ts   # Authentication state
+│   │   ├── cartStore.ts   # Shopping cart state
+│   │   └── productStore.ts # Product management state
+│   ├── services/          # External services
+│   │   ├── notificationService.ts
+│   │   └── deepLinkService.ts
+│   ├── utils/             # Utility functions and API
+│   │   └── api/           # API services and configuration
+│   ├── context/           # React contexts
+│   └── config/            # App configuration
+├── android/               # Android-specific code
+├── ios/                   # iOS-specific code
+├── __tests__/            # Test files
+└── docs/                 # Additional documentation
+```
+
+## 🔧 Available Scripts
+
+- `npm start` - Start Metro bundler
+- `npm run android` - Run on Android device/emulator
+- `npm run ios` - Run on iOS device/simulator
+- `npm run lint` - Run ESLint
+- `npm test` - Run Jest tests
+- `npm run test:watch` - Run tests in watch mode
+
+## 🧪 Testing
+
+The app includes comprehensive testing setup:
+
+```bash
+# Run all tests
+npm test
+
+# Run tests in watch mode
+npm run test:watch
+
+# Run tests with coverage
+npm test -- --coverage
+```
+
+## 📱 Key Features Implementation
+
+### Authentication Flow
+
+- Email/password registration and login
+- OTP verification for new accounts
+- Password reset functionality
+- Persistent authentication state
+
+### Shopping Cart
+
+- Add/remove products
+- Quantity management
+- Price calculation
+- Persistent cart across app sessions
+
+### Product Management
+
+- Product listing with pagination
+- Search and filtering
+- Category-based browsing
+- Product details view
+
+### Notifications
+
+- Push notifications setup
+- Local notifications
+- Deep link handling from notifications
+
+## 🔥 Firebase Integration
+
+The app integrates with Firebase for:
+
+- **Analytics**: Track user behavior and app usage
+- **Crashlytics**: Monitor and track app crashes
+- **Performance**: Monitor app performance metrics
+
+## 🚀 Deployment
 
 ### Android
 
-```sh
-# Using npm
-npm run android
-
-# OR using Yarn
-yarn android
-```
+1. Generate a signed APK or AAB
+2. Follow the [React Native Android deployment guide](https://reactnative.dev/docs/signed-apk-android)
 
 ### iOS
 
-For iOS, remember to install CocoaPods dependencies (this only needs to be run on first clone or after updating native deps).
+1. Archive the project in Xcode
+2. Follow the [React Native iOS deployment guide](https://reactnative.dev/docs/publishing-to-app-store)
 
-The first time you create a new project, run the Ruby bundler to install CocoaPods itself:
+## 🐛 Troubleshooting
 
-```sh
-bundle install
-```
+### Common Issues
 
-Then, and every time you update your native dependencies, run:
+1. **Metro bundler issues**: Clear cache with `npx react-native start --reset-cache`
+2. **iOS build issues**: Clean build folder and reinstall pods
+3. **Android build issues**: Clean project with `cd android && ./gradlew clean`
 
-```sh
-bundle exec pod install
-```
+### Debug Mode
 
-For more information, please visit [CocoaPods Getting Started guide](https://guides.cocoapods.org/using/getting-started.html).
+- **Android**: Shake device or press `Ctrl + M` (Windows/Linux) / `Cmd + M` (macOS)
+- **iOS**: Shake device or press `Cmd + D` in simulator
 
-```sh
-# Using npm
-npm run ios
+## 📚 Additional Documentation
 
-# OR using Yarn
-yarn ios
-```
+- [App Icon Guide](./APP_ICON_GUIDE.md)
+- [Build & Release Guide](./BUILD_RELEASE.md)
+- [Firebase Crashlytics Setup](./FIREBASE_CRASHLYTICS_SETUP.md)
 
-If everything is set up correctly, you should see your new app running in the Android Emulator, iOS Simulator, or your connected device.
+## 🤝 Contributing
 
-This is one way to run your app — you can also build it directly from Android Studio or Xcode.
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
-## Step 3: Modify your app
+## 📄 License
 
-Now that you have successfully run the app, let's make changes!
+This project is part of the Eurisko Academy React Native assignment.
 
-Open `App.tsx` in your text editor of choice and make some changes. When you save, your app will automatically update and reflect these changes — this is powered by [Fast Refresh](https://reactnative.dev/docs/fast-refresh).
+## 🆘 Support
 
-When you want to forcefully reload, for example to reset the state of your app, you can perform a full reload:
+If you encounter any issues or have questions:
 
-- **Android**: Press the <kbd>R</kbd> key twice or select **"Reload"** from the **Dev Menu**, accessed via <kbd>Ctrl</kbd> + <kbd>M</kbd> (Windows/Linux) or <kbd>Cmd ⌘</kbd> + <kbd>M</kbd> (macOS).
-- **iOS**: Press <kbd>R</kbd> in iOS Simulator.
+1. Check the [Troubleshooting](#-troubleshooting) section
+2. Review the [React Native documentation](https://reactnative.dev/docs/getting-started)
+3. Check existing issues in the repository
+4. Create a new issue with detailed information
 
-## Congratulations! :tada:
+---
 
-You've successfully run and modified your React Native App. :partying_face:
-
-### Now what?
-
-- If you want to add this new React Native code to an existing application, check out the [Integration guide](https://reactnative.dev/docs/integration-with-existing-apps).
-- If you're curious to learn more about React Native, check out the [docs](https://reactnative.dev/docs/getting-started).
-
-# Troubleshooting
-
-If you're having issues getting the above steps to work, see the [Troubleshooting](https://reactnative.dev/docs/troubleshooting) page.
-
-# Learn More
-
-To learn more about React Native, take a look at the following resources:
-
-- [React Native Website](https://reactnative.dev) - learn more about React Native.
-- [Getting Started](https://reactnative.dev/docs/environment-setup) - an **overview** of React Native and how setup your environment.
-- [Learn the Basics](https://reactnative.dev/docs/getting-started) - a **guided tour** of the React Native **basics**.
-- [Blog](https://reactnative.dev/blog) - read the latest official React Native **Blog** posts.
-- [`@facebook/react-native`](https://github.com/facebook/react-native) - the Open Source; GitHub **repository** for React Native.
+**Happy Coding! 🚀**
