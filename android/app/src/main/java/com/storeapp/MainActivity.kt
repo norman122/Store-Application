@@ -1,7 +1,6 @@
 package com.storeapp
 
 import android.os.Bundle
-import android.view.View
 import com.facebook.react.ReactActivity
 import com.facebook.react.ReactActivityDelegate
 import com.facebook.react.defaults.DefaultNewArchitectureEntryPoint.fabricEnabled
@@ -24,17 +23,5 @@ class MainActivity : ReactActivity() {
    * which allows you to enable New Architecture with a single boolean flags [fabricEnabled]
    */
   override fun createReactActivityDelegate(): ReactActivityDelegate =
-      object : DefaultReactActivityDelegate(this, mainComponentName, fabricEnabled) {
-        override fun getLoadingView(): View? {
-          // Return null to disable the default loading view completely
-          return null
-        }
-        
-        override fun getLaunchOptions(): Bundle? {
-          val bundle = Bundle()
-          // Disable the loading view
-          bundle.putBoolean("loadingViewFadeOutDuration", false)
-          return bundle
-        }
-      }
+      DefaultReactActivityDelegate(this, mainComponentName, fabricEnabled)
 }
