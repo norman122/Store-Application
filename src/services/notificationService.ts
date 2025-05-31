@@ -1,5 +1,7 @@
 import notifee, { AndroidImportance, AndroidStyle, EventType } from '@notifee/react-native';
 import { Platform } from 'react-native';
+import { ShareUtils } from '../utils/shareUtils';
+import { productApi } from '../utils/api/services/productService';
 
 export interface NotificationData {
   productId?: string;
@@ -85,7 +87,10 @@ class NotificationService {
       if (type === EventType.PRESS) {
         this.handleNotificationPress(detail.notification?.data);
       } else if (type === EventType.ACTION_PRESS) {
-        this.handleNotificationAction(detail.pressAction?.id, detail.notification?.data);
+        // Handle async action
+        this.handleNotificationAction(detail.pressAction?.id, detail.notification?.data).catch((error) => {
+          console.error('Error handling foreground notification action:', error);
+        });
       }
     });
 
@@ -94,7 +99,11 @@ class NotificationService {
       if (type === EventType.PRESS) {
         this.handleNotificationPress(detail.notification?.data);
       } else if (type === EventType.ACTION_PRESS) {
-        this.handleNotificationAction(detail.pressAction?.id, detail.notification?.data);
+        try {
+          await this.handleNotificationAction(detail.pressAction?.id, detail.notification?.data);
+        } catch (error) {
+          console.error('Error handling background notification action:', error);
+        }
       }
     });
   }
@@ -104,55 +113,82 @@ class NotificationService {
 
     // Handle deep linking based on notification data
     if (data.productId && (data.type === 'product_added' || data.type === 'product_updated')) {
-      // Import Linking here to avoid circular dependencies
-      const { Linking } = require('react-native');
       const deepLink = `storeapp://product/${data.productId}`;
       console.log('Opening product from notification:', deepLink);
       
-      // Use React Native's Linking API to open the deep link
-      // The deep linking service will handle authentication flow
-      Linking.openURL(deepLink).catch((err: any) => {
-        console.error('Error opening deep link from notification:', err);
-      });
+      // Use the deep link service for consistent navigation handling
+      // Import here to avoid circular dependencies
+      const { deepLinkService } = require('./deepLinkService');
+      deepLinkService.handleDeepLink(deepLink);
     }
   }
 
-  handleNotificationAction(actionId?: string, data?: NotificationData) {
+  async handleNotificationAction(actionId?: string, data?: NotificationData) {
     if (!actionId || !data) return;
-
-    const { Linking, Share } = require('react-native');
 
     switch (actionId) {
       case 'view_product':
         if (data.productId) {
           const deepLink = `storeapp://product/${data.productId}`;
-          console.log('Opening product from action using deep link service:', deepLink);
+          console.log('Opening product from notification action:', deepLink);
           
-          // Use the deep link service instead of Linking.openURL
+          // Use the deep link service for consistent navigation handling
           // Import here to avoid circular dependencies
           const { deepLinkService } = require('./deepLinkService');
-          deepLinkService.handleDeepLink(deepLink);
+          
+          // Check auth status before navigation
+          try {
+            const { useAuthStore } = require('../store/authStore');
+            const authStore = useAuthStore.getState();
+            deepLinkService.handleDeepLink(deepLink, authStore.isLoggedIn);
+          } catch (error) {
+            console.error('Error checking auth status for notification navigation:', error);
+            // Fallback: handle without auth status check
+            deepLinkService.handleDeepLink(deepLink);
+          }
         }
         break;
       
       case 'share_product':
         if (data.productId) {
-          const shareUrl = `storeapp://product/${data.productId}`;
-          Share.share({
-            message: `Check out this product: ${shareUrl}`,
-            url: shareUrl,
-          }).catch((err: any) => {
-            console.error('Error sharing from notification action:', err);
-          });
+          try {
+            console.log('Sharing product from notification:', data.productId);
+            
+            // Use ShareUtils.shareProductById - it will handle fetching product details internally
+            const shareSuccess = await ShareUtils.shareProductById(data.productId, true);
+            console.log('Product shared from notification:', shareSuccess ? 'Success' : 'Failed/Cancelled');
+          } catch (error) {
+            console.error('Error sharing product from notification:', error);
+            
+            // Fallback to basic sharing with web link
+            const webLink = ShareUtils.generateProductWebLink(data.productId);
+            const shareMessage = `🛍️ Check out this product on StoreApp!\n\n👆 Tap the link to view this product!`;
+            
+            const { Share } = require('react-native');
+            Share.share({
+              message: shareMessage,
+              url: webLink,
+            }).catch((shareError: any) => {
+              console.error('Fallback share also failed:', shareError);
+            });
+          }
         }
         break;
       
       case 'browse_products':
         const homeDeepLink = 'storeapp://home';
         console.log('Opening home from welcome notification action:', homeDeepLink);
-        Linking.openURL(homeDeepLink).catch((err: any) => {
-          console.error('Error opening home from notification action:', err);
-        });
+        
+        // Use deep link service for consistency
+        const { deepLinkService } = require('./deepLinkService');
+        try {
+          const { useAuthStore } = require('../store/authStore');
+          const authStore = useAuthStore.getState();
+          deepLinkService.handleDeepLink(homeDeepLink, authStore.isLoggedIn);
+        } catch (error) {
+          console.error('Error checking auth status for home navigation:', error);
+          deepLinkService.handleDeepLink(homeDeepLink);
+        }
         break;
       
       default:

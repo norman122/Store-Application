@@ -1,7 +1,7 @@
 import { Alert, Platform } from 'react-native';
 import { Share as RNShare } from 'react-native';
 import Share from 'react-native-share';
-import { Product } from './api/services/productService';
+import { Product, productApi } from './api/services/productService';
 
 export interface ShareOptions {
   title: string;
@@ -194,6 +194,87 @@ export class ShareUtils {
         return false;
       }
     }
+  }
+
+  /**
+   * Share a product by ID - fetches product details and then shares
+   */
+  static async shareProductById(productId: string, useSimpleMessage: boolean = true): Promise<boolean> {
+    try {
+      console.log('ShareUtils - Fetching product details for sharing:', productId);
+      
+      // Fetch the product details
+      const productResponse = await productApi.getProductById(productId);
+      const product = productResponse.data;
+      
+      if (!product) {
+        console.error('ShareUtils - Product not found:', productId);
+        // Fallback to basic sharing with just the link
+        return this.shareBasicProductLink(productId);
+      }
+      
+      // Use the existing shareProduct method
+      return this.shareProduct(product, useSimpleMessage);
+    } catch (error) {
+      console.error('ShareUtils - Error fetching product for sharing:', error);
+      // Fallback to basic sharing with just the link
+      return this.shareBasicProductLink(productId);
+    }
+  }
+
+  /**
+   * Share a basic product link when full product details are not available
+   */
+  static async shareBasicProductLink(productId: string): Promise<boolean> {
+    try {
+      const webLink = this.generateProductWebLink(productId);
+      const shareMessage = `🛍️ Check out this product on StoreApp!\n\n👆 Tap the link to view this product!`;
+      
+      const shareOptions = {
+        title: 'StoreApp Product',
+        message: shareMessage,
+        url: webLink,
+        subject: 'Check out this product on StoreApp',
+      };
+      
+      console.log('ShareUtils - Sharing basic product link:', shareOptions);
+      
+      // Try react-native-share first
+      try {
+        const result = await Share.open(shareOptions);
+        console.log('Basic product link shared successfully');
+        return true;
+      } catch (shareError) {
+        console.log('react-native-share failed for basic link, trying fallback:', shareError);
+        
+        // Fallback to React Native's built-in Share
+        const result = await RNShare.share({
+          title: shareOptions.title,
+          message: shareOptions.message,
+          url: shareOptions.url,
+        });
+        
+        if (result.action === RNShare.sharedAction) {
+          console.log('Basic product link shared successfully via fallback');
+          return true;
+        } else if (result.action === RNShare.dismissedAction) {
+          console.log('Basic product link share dismissed');
+          return false;
+        }
+      }
+    } catch (error) {
+      console.error('All basic sharing methods failed:', error);
+      
+      // Final fallback: Show alert with share information
+      Alert.alert(
+        'Share Product',
+        `🛍️ Check out this product on StoreApp!\n\n🔗 Web link: ${this.generateProductWebLink(productId)}\n\n📱 App link: ${this.generateProductDeepLink(productId)}`,
+        [{ text: 'OK' }]
+      );
+      return false;
+    }
+    
+    return false;
   }
 }
 
